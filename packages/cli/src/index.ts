@@ -1,5 +1,5 @@
+export { cleanReports } from './commands/clean.js'
+export { dismissReport } from './commands/dismiss.js'
 export { listReports } from './commands/list.js'
 export { showReport } from './commands/show.js'
 export { submitReport } from './commands/submit.js'
-export { dismissReport } from './commands/dismiss.js'
-export { cleanReports } from './commands/clean.js'

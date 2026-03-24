@@ -1,73 +1,79 @@
 export interface ErrorReport {
-  id: string
-  createdAt: string
-  app: AppContext
-  error: ErrorPayload
-  environment: EnvironmentPayload
-  command?: CommandContext
-  sanitizedFields: string[]
-  matches?: ExistingIssue[]
-  metadata?: Record<string, unknown>
-  diagnostic?: { heapUsed: number; heapTotal: number; external: number; activeHandles?: number; uptime: number } | null
-  status: 'pending' | 'submitted' | 'dismissed'
-  submittedAt?: string
-  issueUrl?: string
+	id: string
+	createdAt: string
+	app: AppContext
+	error: ErrorPayload
+	environment: EnvironmentPayload
+	command?: CommandContext
+	sanitizedFields: string[]
+	matches?: ExistingIssue[]
+	metadata?: Record<string, unknown>
+	diagnostic?: {
+		heapUsed: number
+		heapTotal: number
+		external: number
+		activeHandles?: number
+		uptime: number
+	} | null
+	status: 'pending' | 'submitted' | 'dismissed'
+	submittedAt?: string
+	issueUrl?: string
 }
 
 export interface ErrorPayload {
-  name: string
-  message: string
-  stack?: string
-  causeChain?: string[]
+	name: string
+	message: string
+	stack?: string
+	causeChain?: string[]
 }
 
 export interface EnvironmentPayload {
-  os: string
-  arch: string
-  runtimeVersion: string
-  shell?: string
-  ci?: boolean
-  packageManager?: string
+	os: string
+	arch: string
+	runtimeVersion: string
+	shell?: string
+	ci?: boolean
+	packageManager?: string
 }
 
 export interface AppContext {
-  name: string
-  version: string
-  runtime: string
-  gitSha?: string
+	name: string
+	version: string
+	runtime: string
+	gitSha?: string
 }
 
 export interface CommandContext {
-  command?: string
-  subcommand?: string
-  argv?: string[]
+	command?: string
+	subcommand?: string
+	argv?: string[]
 }
 
 export interface DraftPayload {
-  title: string
-  body: string
-  labels?: string[]
+	title: string
+	body: string
+	labels?: string[]
 }
 
 export interface ExistingIssue {
-  type: 'issue' | 'discussion'
-  number: number
-  title: string
-  url: string
-  state: 'open' | 'closed'
-  labels: string[]
-  createdAt: string
+	type: 'issue' | 'discussion'
+	number: number
+	title: string
+	url: string
+	state: 'open' | 'closed'
+	labels: string[]
+	createdAt: string
 }
 
 export interface MatchResult {
-  found: boolean
-  matches: ExistingIssue[]
+	found: boolean
+	matches: ExistingIssue[]
 }
 
 export interface SanitizeRule {
-  name: string
-  pattern: RegExp
-  replacement: string
+	name: string
+	pattern: RegExp
+	replacement: string
 }
 
 export type ReporterMode = 'browser' | 'gh' | 'api' | 'file'
@@ -75,51 +81,51 @@ export type InteractiveMode = 'auto' | 'never'
 export type NonInteractiveMode = 'save' | 'silent' | 'log'
 
 export interface ReporterConfig {
-  repo: string
-  app: { name: string; version: string; gitSha?: string }
-  mode?: ReporterMode
-  interactive?: InteractiveMode
-  nonInteractive?: NonInteractiveMode
-  collect?: {
-    argv?: boolean
-    diagnosticReport?: boolean
-    configSummary?: boolean
-    envinfo?: boolean
-  }
-  sanitize?: {
-    enabled?: boolean
-    customRules?: SanitizeRule[]
-  }
-  issue?: {
-    labels?: string[]
-    title?: (ctx: { command?: string; error: ErrorPayload }) => string
-    sections?: string[]
-    template?: string
-  }
-  store?: {
-    enabled?: boolean
-    maxReports?: number
-  }
-  dedupe?: {
-    enabled?: boolean
-    searchDiscussions?: boolean
-  }
-  prompt?: {
-    message?: string
-    detailMessage?: string
-  }
-  branding?: {
-    showName?: boolean
-  }
+	repo: string
+	app: { name: string; version: string; gitSha?: string }
+	mode?: ReporterMode
+	interactive?: InteractiveMode
+	nonInteractive?: NonInteractiveMode
+	collect?: {
+		argv?: boolean
+		diagnosticReport?: boolean
+		configSummary?: boolean
+		envinfo?: boolean
+	}
+	sanitize?: {
+		enabled?: boolean
+		customRules?: SanitizeRule[]
+	}
+	issue?: {
+		labels?: string[]
+		title?: (ctx: { command?: string; error: ErrorPayload }) => string
+		sections?: string[]
+		template?: string
+	}
+	store?: {
+		enabled?: boolean
+		maxReports?: number
+	}
+	dedupe?: {
+		enabled?: boolean
+		searchDiscussions?: boolean
+	}
+	prompt?: {
+		message?: string
+		detailMessage?: string
+	}
+	branding?: {
+		showName?: boolean
+	}
 }
 
 export interface ErrorContext {
-  command?: string
-  subcommand?: string
-  argv?: string[]
-  metadata?: Record<string, unknown>
+	command?: string
+	subcommand?: string
+	argv?: string[]
+	metadata?: Record<string, unknown>
 }
 
 export function generateReportId(): string {
-  return `${Date.now()}-${crypto.randomUUID().slice(0, 8)}`
+	return `${Date.now()}-${crypto.randomUUID().slice(0, 8)}`
 }

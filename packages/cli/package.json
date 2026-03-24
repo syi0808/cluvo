@@ -1,11 +1,16 @@
 {
-  "name": "@cluvo/cli",
-  "version": "0.1.0",
-  "type": "module",
-  "bin": { "cluvo": "src/bin.ts" },
-  "dependencies": { "@cluvo/core": "workspace:*", "@cluvo/sdk": "workspace:*" },
-  "scripts": {
-    "test": "bun test",
-    "build": "bun build src/bin.ts --outdir dist --target node"
-  }
+	"name": "@cluvo/cli",
+	"version": "0.1.0",
+	"type": "module",
+	"bin": {
+		"cluvo": "src/bin.ts"
+	},
+	"dependencies": {
+		"@cluvo/core": "workspace:*",
+		"@cluvo/sdk": "workspace:*"
+	},
+	"scripts": {
+		"test": "bun test",
+		"build": "bun build src/bin.ts --outdir dist --target node"
+	}
 }

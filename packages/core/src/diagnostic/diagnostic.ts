@@ -1,34 +1,36 @@
 export interface DiagnosticSummary {
-  heapUsed: number
-  heapTotal: number
-  external: number
-  activeHandles?: number
-  uptime: number
+	heapUsed: number
+	heapTotal: number
+	external: number
+	activeHandles?: number
+	uptime: number
 }
 
 export function collectDiagnostic(): DiagnosticSummary | null {
-  try {
-    if (typeof process.report?.getReport === 'function') {
-      const report = process.report.getReport() as any
-      const jsHeap = report?.javascriptHeap
-      const mem = process.memoryUsage()
-      return {
-        heapUsed: jsHeap?.usedMemory || mem.heapUsed,
-        heapTotal: jsHeap?.totalMemory || mem.heapTotal,
-        external: mem.external,
-        activeHandles: report?.libuv?.length,
-        uptime: process.uptime(),
-      }
-    }
+	try {
+		if (typeof process.report?.getReport === 'function') {
+			const report = process.report.getReport() as Record<string, unknown> | null
+			const jsHeap = (report?.javascriptHeap ?? null) as Record<string, number> | null
+			const mem = process.memoryUsage()
+			const libuvRaw = report?.libuv
+			const libuv = Array.isArray(libuvRaw) ? libuvRaw : undefined
+			return {
+				heapUsed: jsHeap?.usedMemory || mem.heapUsed,
+				heapTotal: jsHeap?.totalMemory || mem.heapTotal,
+				external: mem.external,
+				activeHandles: libuv?.length,
+				uptime: process.uptime(),
+			}
+		}
 
-    const mem = process.memoryUsage()
-    return {
-      heapUsed: mem.heapUsed,
-      heapTotal: mem.heapTotal,
-      external: mem.external,
-      uptime: process.uptime(),
-    }
-  } catch {
-    return null
-  }
+		const mem = process.memoryUsage()
+		return {
+			heapUsed: mem.heapUsed,
+			heapTotal: mem.heapTotal,
+			external: mem.external,
+			uptime: process.uptime(),
+		}
+	} catch {
+		return null
+	}
 }
