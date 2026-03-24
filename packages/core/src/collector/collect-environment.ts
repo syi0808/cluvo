@@ -1,0 +1,20 @@
+import type { EnvironmentPayload } from '../types.js'
+import { platform, arch, release } from 'node:os'
+
+export function collectEnvironment(): EnvironmentPayload {
+  return {
+    os: `${platform()} ${release()}`,
+    arch: arch(),
+    runtimeVersion: process.version,
+    shell: process.env.SHELL,
+    ci: !!(process.env.CI || process.env.GITHUB_ACTIONS || process.env.GITLAB_CI || process.env.JENKINS_URL),
+    packageManager: detectPackageManager(),
+  }
+}
+
+function detectPackageManager(): string | undefined {
+  const ua = process.env.npm_config_user_agent
+  if (!ua) return undefined
+  const match = ua.match(/^(\w+)\/[\d.]+/)
+  return match?.[1]
+}

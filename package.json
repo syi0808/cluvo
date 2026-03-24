@@ -1,0 +1,10 @@
+{
+  "name": "cluvo",
+  "private": true,
+  "workspaces": ["packages/*"],
+  "scripts": {
+    "test": "bun test --recursive",
+    "build": "bun run --filter '*' build",
+    "typecheck": "tsc --build"
+  }
+}

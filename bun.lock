@@ -1,0 +1,38 @@
+{
+  "lockfileVersion": 1,
+  "configVersion": 1,
+  "workspaces": {
+    "": {
+      "name": "cluvo",
+    },
+    "packages/cli": {
+      "name": "@cluvo/cli",
+      "version": "0.1.0",
+      "bin": {
+        "cluvo": "src/bin.ts",
+      },
+      "dependencies": {
+        "@cluvo/core": "workspace:*",
+        "@cluvo/sdk": "workspace:*",
+      },
+    },
+    "packages/core": {
+      "name": "@cluvo/core",
+      "version": "0.1.0",
+    },
+    "packages/sdk": {
+      "name": "@cluvo/sdk",
+      "version": "0.1.0",
+      "dependencies": {
+        "@cluvo/core": "workspace:*",
+      },
+    },
+  },
+  "packages": {
+    "@cluvo/cli": ["@cluvo/cli@workspace:packages/cli"],
+
+    "@cluvo/core": ["@cluvo/core@workspace:packages/core"],
+
+    "@cluvo/sdk": ["@cluvo/sdk@workspace:packages/sdk"],
+  }
+}
