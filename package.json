@@ -9,8 +9,7 @@
 		"build": "bun run --filter '*' build",
 		"typecheck": "tsc --build",
 		"check": "biome check",
-		"check:fix": "biome check --write",
-		"format": "biome format --write",
+		"format": "biome check --write",
 		"release": "pubm --mode ci --phase prepare",
 		"release:ci": "pubm --mode ci --phase publish"
 	},
