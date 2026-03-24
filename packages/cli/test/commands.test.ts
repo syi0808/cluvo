@@ -4,8 +4,8 @@ import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import { Store } from '@cluvo/core'
 import type { ErrorReport } from '@cluvo/core'
-import { listReports } from '../src/commands/list.js'
-import { showReport } from '../src/commands/show.js'
+import { listReports, formatReportList } from '../src/commands/list.js'
+import { showReport, formatReportDetail } from '../src/commands/show.js'
 import { dismissReport } from '../src/commands/dismiss.js'
 import { cleanReports } from '../src/commands/clean.js'
 
@@ -76,5 +76,51 @@ describe('CLI commands', () => {
     const all = await store.list('test-app')
     expect(all).toHaveLength(1)
     expect(all[0].id).toBe('r1')
+  })
+
+  test('formatReportList returns "No reports found." for empty list', () => {
+    expect(formatReportList([])).toBe('No reports found.')
+  })
+
+  test('formatReportList shows status indicators', () => {
+    const reports = [
+      makeReport('r1', 'app', 'pending'),
+      makeReport('r2', 'app', 'submitted'),
+      makeReport('r3', 'app', 'dismissed'),
+    ]
+    const output = formatReportList(reports)
+    expect(output).toContain('●')
+    expect(output).toContain('✓')
+    expect(output).toContain('✗')
+  })
+
+  test('formatReportDetail includes body content', async () => {
+    const report = makeReport('r1')
+    report.error = { name: 'TypeError', message: 'x is not a function', stack: 'at foo.ts:1:1' }
+    const output = formatReportDetail(report)
+    expect(output).toContain('TypeError')
+    expect(output).toContain('x is not a function')
+    expect(output).toContain('## Environment')
+  })
+
+  test('showReport returns null for nonexistent id', async () => {
+    const result = await showReport(store, 'nonexistent')
+    expect(result).toBeNull()
+  })
+
+  test('cleanReports with olderThanDays only cleans old reports', async () => {
+    const recent = makeReport('r-recent', 'test-app', 'submitted')
+    recent.createdAt = new Date().toISOString()
+    await store.save(recent)
+
+    const old = makeReport('r-old', 'test-app', 'submitted')
+    old.createdAt = new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString()
+    await store.save(old)
+
+    const removed = await cleanReports(store, { olderThanDays: 30 })
+    expect(removed).toBe(1)
+    const remaining = await store.list('test-app')
+    expect(remaining).toHaveLength(1)
+    expect(remaining[0].id).toBe('r-recent')
   })
 })

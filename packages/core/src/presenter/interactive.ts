@@ -20,10 +20,10 @@ export async function promptUser(
 
   process.stdout.write('\n' + renderSummary(report, draft) + '\n\n')
 
-  return await promptAction(report, authAvailable)
+  return await promptAction(report, draft, authAvailable)
 }
 
-async function promptAction(report: ErrorReport, authAvailable: boolean): Promise<PresenterAction> {
+async function promptAction(report: ErrorReport, draft: DraftPayload, authAvailable: boolean): Promise<PresenterAction> {
   const hasMatches = (report.matches?.length ?? 0) > 0
 
   const options: string[] = []
@@ -50,7 +50,7 @@ async function promptAction(report: ErrorReport, authAvailable: boolean): Promis
     case 'c': return { type: 'cancel' }
     case 'd': {
       process.stdout.write('\n' + renderDetails(draft) + '\n\n')
-      return await promptAction(report, authAvailable)
+      return await promptAction(report, draft, authAvailable)
     }
     default: return { type: 'cancel' }
   }

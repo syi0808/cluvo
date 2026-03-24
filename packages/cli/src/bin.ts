@@ -93,7 +93,7 @@ Commands:
   }
 }
 
-function getFlag(args: string[], flag: string): string | null {
+export function getFlag(args: string[], flag: string): string | null {
   const idx = args.indexOf(flag)
   return idx !== -1 && idx + 1 < args.length ? args[idx + 1] : null
 }

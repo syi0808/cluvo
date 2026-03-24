@@ -1,6 +1,6 @@
 import { describe, expect, test, mock, spyOn, beforeEach, afterEach } from 'bun:test'
-import { buildBrowserUrl } from '../src/publisher/browser.js'
-import { buildGhArgs } from '../src/publisher/gh-cli.js'
+import { buildBrowserUrl, openBrowser } from '../src/publisher/browser.js'
+import { buildGhArgs, ghCreate } from '../src/publisher/gh-cli.js'
 import { saveReportFile } from '../src/publisher/file-export.js'
 import { renderTerminalDraft } from '../src/publisher/terminal.js'
 import { publish } from '../src/publisher/publish.js'
@@ -71,6 +71,45 @@ describe('terminal publisher', () => {
   })
 })
 
+describe('browser publisher extended', () => {
+  test('includes labels param when labels present', () => {
+    const url = buildBrowserUrl(draft, 'owner/repo')!
+    expect(url).toContain('labels=bug')
+  })
+
+  test('omits labels param when labels empty', () => {
+    const noLabelsDraft = { ...draft, labels: [] }
+    const url = buildBrowserUrl(noLabelsDraft, 'owner/repo')!
+    expect(url).not.toContain('labels=')
+  })
+})
+
+describe('gh-cli publisher extended', () => {
+  test('includes --label for each label', () => {
+    const multiLabelDraft = { ...draft, labels: ['bug', 'cluvo-report'] }
+    const args = buildGhArgs(multiLabelDraft, 'owner/repo')
+    const labelIndices = args.reduce<number[]>((acc, a, i) => a === '--label' ? [...acc, i] : acc, [])
+    expect(labelIndices).toHaveLength(2)
+    expect(args[labelIndices[0] + 1]).toBe('bug')
+    expect(args[labelIndices[1] + 1]).toBe('cluvo-report')
+  })
+})
+
+describe('openBrowser', () => {
+  test('resolves when opening valid URL', async () => {
+    // openBrowser uses platform command (open/xdg-open/start)
+    // On macOS 'open' succeeds for valid URLs
+    await expect(openBrowser('https://example.com')).resolves.toBeUndefined()
+  })
+})
+
+describe('ghCreate', () => {
+  test('rejects when gh is not available', async () => {
+    // gh issue create with invalid repo will fail
+    expect(ghCreate({ title: 'test', body: 'test' }, 'invalid')).rejects.toThrow()
+  })
+})
+
 describe('publish fallback chain', () => {
   test('falls through to file export when all remote methods fail', async () => {
     const tmpDir = await mkdtemp(join(tmpdir(), 'cluvo-chain-'))
@@ -83,6 +122,42 @@ describe('publish fallback chain', () => {
       expect(result.method).toBe('file')
       expect(result.filePath).toBeTruthy()
     } finally {
+      await rm(tmpDir, { recursive: true, force: true })
+    }
+  })
+
+  test('mode=browser falls through to file when URL too long', async () => {
+    const tmpDir = await mkdtemp(join(tmpdir(), 'cluvo-chain2-'))
+    try {
+      const longDraft = { ...draft, body: 'x'.repeat(8000) }
+      const result = await publish(longDraft, {
+        repo: 'owner/repo',
+        mode: 'browser',
+        fallbackDir: tmpDir,
+      })
+      expect(result.method).toBe('file')
+      expect(result.filePath).toBeTruthy()
+    } finally {
+      await rm(tmpDir, { recursive: true, force: true })
+    }
+  })
+
+  test('mode=api falls through when no token', async () => {
+    const savedToken = process.env.GITHUB_TOKEN
+    const savedGhToken = process.env.GH_TOKEN
+    delete process.env.GITHUB_TOKEN
+    delete process.env.GH_TOKEN
+    const tmpDir = await mkdtemp(join(tmpdir(), 'cluvo-chain3-'))
+    try {
+      const result = await publish(draft, {
+        repo: 'owner/repo',
+        mode: 'api',
+        fallbackDir: tmpDir,
+      })
+      expect(result.method).toBe('file')
+    } finally {
+      if (savedToken !== undefined) process.env.GITHUB_TOKEN = savedToken
+      if (savedGhToken !== undefined) process.env.GH_TOKEN = savedGhToken
       await rm(tmpDir, { recursive: true, force: true })
     }
   })

@@ -1,4 +1,4 @@
-import { describe, expect, test } from 'bun:test'
+import { describe, expect, test, afterEach } from 'bun:test'
 import { captureError } from '../src/collector/capture-error.js'
 import { collectEnvironment } from '../src/collector/collect-environment.js'
 import { collectApp } from '../src/collector/collect-app.js'
@@ -77,6 +77,33 @@ describe('collectApp', () => {
   test('includes gitSha when provided', () => {
     const app = collectApp({ name: 'x', version: '1.0.0', gitSha: 'abc123' })
     expect(app.gitSha).toBe('abc123')
+  })
+})
+
+describe('detectPackageManager (via collectEnvironment)', () => {
+  const savedUA = process.env.npm_config_user_agent
+
+  afterEach(() => {
+    if (savedUA !== undefined) process.env.npm_config_user_agent = savedUA
+    else delete process.env.npm_config_user_agent
+  })
+
+  test('detects npm when user_agent starts with npm/', () => {
+    process.env.npm_config_user_agent = 'npm/9.0.0 node/v20.0.0 darwin arm64'
+    const env = collectEnvironment()
+    expect(env.packageManager).toBe('npm')
+  })
+
+  test('detects pnpm when user_agent starts with pnpm/', () => {
+    process.env.npm_config_user_agent = 'pnpm/8.6.0 node/v20.0.0 darwin arm64'
+    const env = collectEnvironment()
+    expect(env.packageManager).toBe('pnpm')
+  })
+
+  test('returns undefined when npm_config_user_agent is not set', () => {
+    delete process.env.npm_config_user_agent
+    const env = collectEnvironment()
+    expect(env.packageManager).toBeUndefined()
   })
 })
 

@@ -20,6 +20,11 @@ describe('normalizeQuery', () => {
     expect(q.length).toBeLessThanOrEqual(100)
   })
 
+  test('removes Windows-style paths', () => {
+    const q = normalizeQuery({ name: 'Error', message: 'Failed at C:\\Users\\me\\project\\file.ts' })
+    expect(q).not.toContain('C:\\Users')
+  })
+
   test('combines error name and message', () => {
     const q = normalizeQuery({ name: 'TypeError', message: 'x is not a function' })
     expect(q).toContain('TypeError')

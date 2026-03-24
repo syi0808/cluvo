@@ -1,6 +1,6 @@
-import { describe, expect, test } from 'bun:test'
+import { describe, expect, test, afterEach } from 'bun:test'
 import { sanitize } from '../src/sanitizer/sanitize.js'
-import { DEFAULT_RULES } from '../src/sanitizer/rules.js'
+import { DEFAULT_RULES, getHomeRule, ARGV_SENSITIVE_FLAGS } from '../src/sanitizer/rules.js'
 import type { ErrorReport } from '../src/types.js'
 
 function makeReport(overrides: Partial<ErrorReport> = {}): ErrorReport {
@@ -99,5 +99,62 @@ describe('sanitize', () => {
     })
     const result = sanitize(report)
     expect(result.command!.argv).not.toContain('ghp_secret123')
+  })
+
+  test('masks sk-token patterns', () => {
+    const report = makeReport({
+      error: { name: 'Error', message: 'Key: sk-live-abc123def456xyz' },
+    })
+    const result = sanitize(report)
+    expect(result.error.message).not.toContain('sk-live-abc123def456xyz')
+    expect(result.error.message).toContain('[REDACTED]')
+  })
+
+  test('masks private key blocks', () => {
+    const key = '-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBg...\n-----END PRIVATE KEY-----'
+    const report = makeReport({
+      error: { name: 'Error', message: `Leaked: ${key}` },
+    })
+    const result = sanitize(report)
+    expect(result.error.message).toContain('[REDACTED PRIVATE KEY]')
+    expect(result.error.message).not.toContain('MIIEvQIBADANBg')
+  })
+
+  test('sanitizes causeChain entries', () => {
+    const report = makeReport({
+      error: {
+        name: 'Error',
+        message: 'top',
+        causeChain: ['Failed with api_key=my_secret_123'],
+      },
+    })
+    const result = sanitize(report)
+    expect(result.error.causeChain![0]).not.toContain('my_secret_123')
+  })
+})
+
+describe('rules', () => {
+  test('getHomeRule returns no-op when HOME is not set', () => {
+    const savedHome = process.env.HOME
+    const savedProfile = process.env.USERPROFILE
+    delete process.env.HOME
+    delete process.env.USERPROFILE
+    try {
+      const rule = getHomeRule()
+      expect(rule.name).toBe('home-path')
+      // no-op pattern should not match anything
+      expect('some text /Users/foo'.replace(new RegExp(rule.pattern.source, rule.pattern.flags), rule.replacement)).toBe('some text /Users/foo')
+    } finally {
+      if (savedHome !== undefined) process.env.HOME = savedHome
+      if (savedProfile !== undefined) process.env.USERPROFILE = savedProfile
+    }
+  })
+
+  test('ARGV_SENSITIVE_FLAGS contains expected flags', () => {
+    expect(ARGV_SENSITIVE_FLAGS.has('--token')).toBe(true)
+    expect(ARGV_SENSITIVE_FLAGS.has('--api-key')).toBe(true)
+    expect(ARGV_SENSITIVE_FLAGS.has('--secret')).toBe(true)
+    expect(ARGV_SENSITIVE_FLAGS.has('--password')).toBe(true)
+    expect(ARGV_SENSITIVE_FLAGS.has('-t')).toBe(true)
   })
 })
