@@ -18,7 +18,7 @@ export { renderSummary, renderDetails, renderPromptMessage, promptUser, handleNo
 export type { PresenterAction } from './presenter/index.js'
 
 // Publisher
-export { publish, buildBrowserUrl, buildGhArgs, saveReportFile, renderTerminalDraft, isAuthAvailable } from './publisher/index.js'
+export { publish, buildBrowserUrl, openBrowser, buildGhArgs, saveReportFile, renderTerminalDraft, isAuthAvailable, checkGhInstalled, checkGhAuth, getGithubToken } from './publisher/index.js'
 export type { PublishResult, PublishOptions } from './publisher/index.js'
 
 // Store

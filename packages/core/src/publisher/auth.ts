@@ -3,7 +3,7 @@ import { execFile } from 'node:child_process'
 function exec(command: string, args: string[]): Promise<{ code: number; stdout: string; stderr: string }> {
   return new Promise((resolve) => {
     execFile(command, args, (error, stdout, stderr) => {
-      resolve({ code: error?.code ?? (error ? 1 : 0), stdout, stderr })
+      resolve({ code: typeof error?.code === 'number' ? error.code : (error ? 1 : 0), stdout, stderr })
     })
   })
 }
