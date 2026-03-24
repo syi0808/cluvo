@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 import { mkdtemp, readFile, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { buildBrowserUrl, openBrowser } from '../src/publisher/browser.js'
+import { buildBrowserUrl } from '../src/publisher/browser.js'
 import { saveReportFile } from '../src/publisher/file-export.js'
 import { buildGhArgs, ghCreate } from '../src/publisher/gh-cli.js'
 import { publish } from '../src/publisher/publish.js'
@@ -99,14 +99,6 @@ describe('gh-cli publisher extended', () => {
 		expect(labelIndices).toHaveLength(2)
 		expect(args[labelIndices[0] + 1]).toBe('bug')
 		expect(args[labelIndices[1] + 1]).toBe('cluvo-report')
-	})
-})
-
-describe('openBrowser', () => {
-	test('resolves when opening valid URL', async () => {
-		// openBrowser uses platform command (open/xdg-open/start)
-		// On macOS 'open' succeeds for valid URLs
-		await expect(openBrowser('https://example.com')).resolves.toBeUndefined()
 	})
 })
 

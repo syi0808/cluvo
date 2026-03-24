@@ -15,10 +15,11 @@ export function buildBrowserUrl(draft: DraftPayload, repo: string): string | nul
 }
 
 export async function openBrowser(url: string): Promise<void> {
-	const cmd =
-		process.platform === 'darwin' ? 'open' : process.platform === 'win32' ? 'start' : 'xdg-open'
+	const isWin = process.platform === 'win32'
+	const cmd = isWin ? 'cmd' : process.platform === 'darwin' ? 'open' : 'xdg-open'
+	const args = isWin ? ['/c', 'start', '', url] : [url]
 	return new Promise((resolve, reject) => {
-		execFile(cmd, [url], (error) => {
+		execFile(cmd, args, (error) => {
 			if (error) reject(new Error(`Failed to open browser: ${error.message}`))
 			else resolve()
 		})
