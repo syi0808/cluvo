@@ -89,20 +89,4 @@ After successful integration, inform the user:
 
 ## API Reference
 
-### `createReporter(config): Reporter`
-
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `repo` | `string` | Yes | GitHub `owner/repo` |
-| `app.name` | `string` | Yes | Application name |
-| `app.version` | `string` | Yes | Application version |
-| `app.gitSha` | `string` | No | Git commit SHA |
-
-### `reporter.wrapCommand(fn): Promise<void>`
-
-Wraps an async function. On error: capture → sanitize → prompt user → submit to GitHub. Re-throws the original error after handling.
-
-### `reporter.installGlobalHandlers(): () => void`
-
-Registers `uncaughtException` and `unhandledRejection` listeners. Returns an unsubscribe function.
-**Note:** Use this via `/cluvo-find-handlers` for global-level error coverage; `wrapCommand` is sufficient for basic setup.
+Read [references/sdk-api.md](references/sdk-api.md) for the full `createReporter` and `Reporter` API.

@@ -63,48 +63,7 @@ Present findings to the user as a table:
 
 For each recommended location, show the code change and ask the user to confirm before applying.
 
-#### Manual Level Pattern
-
-```typescript
-try {
-  await riskyOperation()
-} catch (error) {
-  const report = await cluvo.reportError(error, {
-    command: '<command-name>',
-    argv: process.argv.slice(2),
-  })
-  await cluvo.promptAndSubmit(report)
-}
-```
-
-- `reportError` never throws — it always returns a report (even on internal failure)
-- Populate `command` and `subcommand` from context if available
-- Add relevant `metadata` if the catch block has useful context
-
-#### Global Handlers Pattern
-
-```typescript
-// At app startup, after createReporter
-const unsubscribe = cluvo.installGlobalHandlers()
-```
-
-#### Low-Level Pipeline Pattern
-
-```typescript
-const report = cluvo.buildReport(error, context)
-const sanitized = cluvo.sanitizeReport(report)
-const matchResult = await cluvo.findMatches(sanitized)
-const enriched = matchResult.found
-  ? { ...sanitized, matches: matchResult.matches }
-  : sanitized
-const draft = cluvo.buildDraft(enriched)
-const result = await cluvo.publish(draft)
-```
-
-Use this when the caller needs to:
-- Inspect or modify the report between steps
-- Conditionally skip submission
-- Use custom publish logic
+Read [references/error-handling-patterns.md](references/error-handling-patterns.md) for the three integration patterns: manual level (`reportError` + `promptAndSubmit`), global handlers (`installGlobalHandlers`), and low-level pipeline.
 
 ### 5. Completion message
 
@@ -116,34 +75,4 @@ Use this when the caller needs to:
 
 ## API Reference
 
-### `reporter.reportError(error, context?): Promise<ErrorReport>`
-
-Never throws. Returns a report even on internal failure.
-
-**ErrorContext:**
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `command` | `string?` | Command name (e.g., `'deploy'`) |
-| `subcommand` | `string?` | Subcommand name (e.g., `'production'`) |
-| `argv` | `string[]?` | CLI arguments |
-| `metadata` | `Record<string, unknown>?` | Arbitrary context data |
-
-### `reporter.promptAndSubmit(report): Promise<void>`
-
-In TTY: shows interactive prompt (view, react, open, gh, save, cancel).
-In non-TTY: follows `nonInteractive` config setting (save/log/silent).
-
-### `reporter.installGlobalHandlers(): () => void`
-
-Catches `uncaughtException` and `unhandledRejection`. Returns unsubscribe function.
-
-### Low-Level Methods
-
-| Method | Description |
-|--------|-------------|
-| `buildReport(error, context?)` | Collect error + environment + command info |
-| `sanitizeReport(report)` | Apply sanitize rules, returns new report |
-| `findMatches(report)` | Search GitHub for duplicate issues |
-| `buildDraft(report)` | Generate markdown title + body |
-| `publish(draft)` | Submit via browser/gh/api/file |
+Read [references/sdk-api.md](references/sdk-api.md) for the full Reporter API including `reportError`, `promptAndSubmit`, `installGlobalHandlers`, and low-level methods.

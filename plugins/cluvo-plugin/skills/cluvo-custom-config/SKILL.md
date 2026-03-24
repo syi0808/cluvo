@@ -74,19 +74,6 @@ const cluvo = createReporter({
 })
 ```
 
-**Built-in rules** (always active when `sanitize.enabled: true`):
-
-| Rule | Matches |
-|------|---------|
-| bearer-token | `Bearer <token>` headers |
-| github-token | `ghp_*`, `ghs_*` tokens |
-| generic-api-key | Common API key patterns |
-| password | Password fields in key=value pairs |
-| email | Email addresses |
-| home-path | Home directory paths (e.g., `/Users/name/...`) |
-| private-key | PEM private key blocks |
-| sk-token | `sk-*` tokens (OpenAI, Stripe, etc.) |
-
 **Note:** Sensitive CLI argv (e.g., `--token`, `--password`) are sanitized by a separate mechanism (`ARGV_SENSITIVE_FLAGS`) independent of `SanitizeRule` pipeline.
 
 #### Issue — Labels, Title, Sections
@@ -178,48 +165,4 @@ branding: {
 
 ## Full ReporterConfig Reference
 
-```typescript
-interface ReporterConfig {
-  repo: string
-  app: { name: string; version: string; gitSha?: string }
-  mode?: 'browser' | 'gh' | 'api' | 'file'
-  interactive?: 'auto' | 'never'
-  nonInteractive?: 'save' | 'silent' | 'log'
-  collect?: {
-    argv?: boolean              // default: true
-    diagnosticReport?: boolean  // default: false
-    envinfo?: boolean           // default: true
-  }
-  sanitize?: {
-    enabled?: boolean           // default: true
-    customRules?: SanitizeRule[]
-  }
-  dedupe?: {
-    enabled?: boolean           // default: true
-    searchDiscussions?: boolean // default: false
-  }
-  issue?: {
-    labels?: string[]           // default: ['cluvo-report']
-    title?: (ctx: { command?: string; error: ErrorPayload }) => string
-    sections?: string[]         // default: all 6 sections
-    template?: string
-  }
-  store?: {
-    enabled?: boolean           // default: true
-    maxReports?: number         // default: 100
-  }
-  prompt?: {
-    message?: string
-    detailMessage?: string
-  }
-  branding?: {
-    showName?: boolean          // default: false
-  }
-}
-
-interface SanitizeRule {
-  name: string
-  pattern: RegExp
-  replacement: string
-}
-```
+Read [references/config-reference.md](references/config-reference.md) for the full `ReporterConfig` interface, `SanitizeRule` type, and built-in sanitize rules table.
