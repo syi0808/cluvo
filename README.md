@@ -1,51 +1,47 @@
 # Cluvo
 
-**Local-first bug reporting for open-source CLIs and SDKs.**
+[![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
+[![CI](https://github.com/user/cluvo/actions/workflows/ci.yml/badge.svg)](https://github.com/user/cluvo/actions/workflows/ci.yml)
 
-Cluvo turns crashes into debug-ready GitHub issues — no server, no dashboard, no telemetry. Errors are collected, sanitized, and formatted on the user's machine. They review everything before it goes anywhere.
+> Bug reports should be as easy to file as they are to ignore.
 
-```ts
-import { createReporter } from '@cluvo/sdk'
+Cluvo is a local-first bug reporting SDK for open-source CLIs and SDKs. It captures errors, sanitizes sensitive data on-device, lets users review everything before it goes anywhere, and publishes debug-ready GitHub issues.
 
-const cluvo = createReporter({
-  repo: 'your-org/your-cli',
-  app: { name: 'your-cli', version: '1.2.0' },
-})
+No server, no dashboard, no telemetry. All processing happens on the user's machine until they explicitly choose to submit.
 
-// Wrap your CLI entry point
-await cluvo.wrapCommand(async () => {
-  await runCli()
-})
-// Errors are caught, sanitized, and the user is prompted to submit
-```
+## Features
 
-## Why Cluvo
+- **Automatic Error Capture** — Collects error, stack trace, OS, runtime, architecture, command args, and git SHA
+- **On-Device Sanitization** — Strips tokens, passwords, API keys, emails, and home paths before the user ever sees a report
+- **Duplicate Detection** — Searches existing GitHub issues and discussions before creating new ones
+- **User Consent First** — Interactive TTY prompts let users review and decide what happens with their data
+- **Zero-Server Architecture** — No backend, no sign-up, no API keys required to get started
+- **Fallback Publishing** — Browser → `gh` CLI → GitHub API → local file export — always succeeds
+- **Local Report Storage** — Stores reports at `~/.cluvo/reports/` for later review, submission, or cleanup
 
-Open-source maintainers waste hours asking for environment details, stack traces, and reproduction steps. Users file issues that say "it doesn't work." Both sides lose.
+## Getting Started
 
-Cluvo fixes this at the source:
+### Requirements
 
-- **Collects what matters** — error, stack trace, OS, runtime, command, and argv
-- **Strips what shouldn't leave** — tokens, passwords, API keys, emails, home paths
-- **Detects duplicates** — searches existing GitHub issues before creating new ones
-- **Lets users decide** — nothing is sent without explicit review and consent
-- **Works without a server** — no backend, no sign-up, no API keys required
+- Node.js 18 or later (or [Bun](https://bun.sh) 1.3+)
 
-## Install
+### Install
 
 ```bash
-bun add @cluvo/sdk
-# or
 npm install @cluvo/sdk
+# or
+bun add @cluvo/sdk
 ```
 
 For the CLI management tool:
 
 ```bash
+npm install -g @cluvo/cli
+# or
 bun add -g @cluvo/cli
 ```
 
-## Quick Start
+## Usage
 
 ### Wrap a command (recommended)
 
@@ -58,7 +54,6 @@ const cluvo = createReporter({
 })
 
 await cluvo.wrapCommand(async () => {
-  // Your CLI logic here
   await deploy(options)
 })
 // If deploy() throws, cluvo catches it, builds a report,
@@ -76,7 +71,6 @@ try {
     argv: process.argv.slice(2),
   })
 
-  // Later, prompt the user to submit
   await cluvo.promptAndSubmit(report)
 }
 ```
@@ -91,7 +85,7 @@ const draft = cluvo.buildDraft(sanitized)
 const result = await cluvo.publish(draft)
 ```
 
-## What the User Sees
+### What the user sees
 
 When an error occurs in interactive mode, the user sees a compact summary:
 
@@ -121,8 +115,7 @@ const cluvo = createReporter({
   repo: 'owner/repo',
   app: { name: 'my-cli', version: '1.0.0' },
 
-  // Publishing mode — where to send issues
-  // Fallback chain: browser → gh CLI → GitHub API → file export
+  // Publishing mode (fallback chain: browser → gh → API → file)
   mode: 'browser',           // 'browser' | 'gh' | 'api' | 'file'
 
   // Interactive behavior
@@ -131,8 +124,8 @@ const cluvo = createReporter({
 
   // Data collection
   collect: {
-    argv: true,               // Capture command arguments
-    diagnosticReport: false,   // Include heap/memory diagnostics
+    argv: true,
+    diagnosticReport: false,
   },
 
   // Sanitization
@@ -203,9 +196,9 @@ Reports are stored at `~/.cluvo/reports/` as JSON files, organized by app name.
 
 | Package | Description |
 |---------|-------------|
-| `@cluvo/core` | Collector, sanitizer, formatter, matcher, publisher, presenter, store |
-| `@cluvo/sdk` | `createReporter()` — the main integration API |
-| `@cluvo/cli` | CLI for managing stored reports |
+| [`@cluvo/core`](packages/core) | Collector, sanitizer, formatter, matcher, publisher, presenter, store |
+| [`@cluvo/sdk`](packages/sdk) | `createReporter()` — the main integration API |
+| [`@cluvo/cli`](packages/cli) | CLI for managing stored reports |
 
 ## How It Works
 
@@ -227,15 +220,14 @@ Presenter  →  Shows summary, prompts user for action
 Publisher  →  Opens browser / runs gh / calls API / saves file
 ```
 
-## Development
+## Contributing
 
-```bash
-git clone https://github.com/your-org/cluvo.git
-cd cluvo
-bun install
-bun test
-```
+Contributions are welcome. Please read the [Contributing Guide](CONTRIBUTING.md) before submitting a pull request.
 
 ## License
 
-MIT
+This project is licensed under the Apache License 2.0. See the [LICENSE](LICENSE) file for details.
+
+## Author
+
+**Yein Sung** — [GitHub](https://github.com/yeinsung)
