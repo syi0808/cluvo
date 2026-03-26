@@ -27,12 +27,12 @@ async function main() {
 			const id = args[1]
 			if (!id) {
 				console.error('Usage: cluvo show <id>')
-				process.exit(1)
+				return exitWithCode(1)
 			}
 			const report = await showReport(store, id)
 			if (!report) {
 				console.error(`Report ${id} not found`)
-				process.exit(1)
+				return exitWithCode(1)
 			}
 			console.log(formatReportDetail(report))
 			break
@@ -41,7 +41,7 @@ async function main() {
 			const repo = getFlag(args, '--repo')
 			if (!repo) {
 				console.error('--repo is required')
-				process.exit(1)
+				return exitWithCode(1)
 			}
 			if (args.includes('--all')) {
 				const confirmEach = async (report: ErrorReport): Promise<boolean> => {
@@ -73,12 +73,12 @@ async function main() {
 				const id = args[1]
 				if (!id) {
 					console.error('Usage: cluvo submit <id> --repo owner/repo')
-					process.exit(1)
+					return exitWithCode(1)
 				}
 				const report = await showReport(store, id)
 				if (!report) {
 					console.error(`Report ${id} not found`)
-					process.exit(1)
+					return exitWithCode(1)
 				}
 				const result = await submitReport(store, report, { repo })
 				console.log(result ? `Submitted: ${result}` : 'Submitted (saved locally)')
@@ -89,12 +89,12 @@ async function main() {
 			const id = args[1]
 			if (!id) {
 				console.error('Usage: cluvo dismiss <id>')
-				process.exit(1)
+				return exitWithCode(1)
 			}
 			const report = await showReport(store, id)
 			if (!report) {
 				console.error(`Report ${id} not found`)
-				process.exit(1)
+				return exitWithCode(1)
 			}
 			await dismissReport(store, report.app.name, id)
 			console.log(`Dismissed ${id}`)
@@ -122,6 +122,10 @@ Commands:
 export function getFlag(args: string[], flag: string): string | null {
 	const idx = args.indexOf(flag)
 	return idx !== -1 && idx + 1 < args.length ? args[idx + 1] : null
+}
+
+function exitWithCode(code: number): never {
+	process.exit(code)
 }
 
 main().catch((err) => {
