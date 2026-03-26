@@ -108,7 +108,7 @@ export class Store {
 
 		// Sort by eviction priority: submitted first, then dismissed, then pending
 		// Within each group, oldest first
-		const priorityOrder = { submitted: 0, dismissed: 1, pending: 2 }
+		const priorityOrder = { submitted: 0, dismissed: 1, pending: 2, prompted: 2 }
 		const sorted = [...reports].sort((a, b) => {
 			const pa = priorityOrder[a.status]
 			const pb = priorityOrder[b.status]

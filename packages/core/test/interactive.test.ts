@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, mock, test } from 'bun:test'
-import type { PresenterAction } from '../src/presenter/interactive.js'
+import type { PresenterAction } from '../src/types.js'
 import type { DraftPayload, ErrorReport, ReporterConfig } from '../src/types.js'
 
 const report: ErrorReport = {

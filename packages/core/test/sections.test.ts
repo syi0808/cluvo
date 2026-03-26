@@ -43,6 +43,24 @@ describe('SECTION_RENDERERS', () => {
 			expect(result).toContain('abc123')
 		})
 
+		test('formats Bun runtime without v prefix', () => {
+			const report = makeReport({
+				app: { name: 'test', version: '1.0.0', runtime: 'bun' },
+				environment: { os: 'darwin', arch: 'arm64', runtimeVersion: '1.1.0' },
+			})
+			const result = SECTION_RENDERERS.environment(report)
+			expect(result).toContain('| Runtime | bun 1.1.0 |')
+		})
+
+		test('formats Node runtime with v prefix', () => {
+			const report = makeReport({
+				app: { name: 'test', version: '1.0.0', runtime: 'node' },
+				environment: { os: 'darwin', arch: 'arm64', runtimeVersion: 'v22.0.0' },
+			})
+			const result = SECTION_RENDERERS.environment(report)
+			expect(result).toContain('| Runtime | node v22.0.0 |')
+		})
+
 		test('includes shell, packageManager, CI when present', () => {
 			const result = SECTION_RENDERERS.environment(
 				makeReport({

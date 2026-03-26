@@ -1,2 +1,5 @@
 export type { DraftPayload, ErrorContext, ErrorReport, ReporterConfig } from '@cluvo/core'
 export { createReporter, type Reporter } from './reporter.js'
+export { type RegisteredReporter, getRegistry } from './registry.js'
+export { TerminalPresenter } from './terminal-presenter.js'
+export { PRESETS } from './presets.js'

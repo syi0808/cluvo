@@ -15,7 +15,6 @@ export { collectDiagnostic } from './diagnostic/index.js'
 export { DEFAULT_SECTIONS, formatBody, formatTitle, SECTION_RENDERERS } from './formatter/index.js'
 // Matcher
 export { match, normalizeQuery, searchIssues } from './matcher/index.js'
-export type { PresenterAction } from './presenter/index.js'
 // Presenter
 export {
 	handleNonInteractive,

@@ -41,7 +41,124 @@ npm install -g @cluvo/cli
 bun add -g @cluvo/cli
 ```
 
+### CLI app
+
+Use the `cli` preset (default) when integrating into an interactive command-line tool. It auto-creates a `TerminalPresenter`, collects `process.argv`, and prompts the user on error.
+
+```ts
+import { createReporter } from '@cluvo/sdk'
+
+const reporter = createReporter({
+  repo: 'myorg/cli-tool',
+  app: { name: 'my-cli', version: '1.0.0' },
+  // preset: 'cli' is the default
+})
+
+// Option A: Wrap entire command (recommended)
+await reporter.wrapCommand(async () => {
+  await runCLI()
+})
+
+// Option B: Report and prompt at a specific catch site
+try {
+  await runCommand()
+} catch (error) {
+  await reporter.reportAndPrompt(error)
+}
+```
+
+### SDK / library
+
+Use the `sdk` preset when integrating into a library. It disables the presenter and sets `interactive: 'never'` — errors are stored locally and the parent CLI (if any) handles prompting.
+
+```ts
+import { createReporter } from '@cluvo/sdk'
+
+const reporter = createReporter({
+  repo: 'myorg/my-lib',
+  app: { name: 'my-lib', version: '2.0.0' },
+  preset: 'sdk',
+})
+
+// Errors are stored; rethrow is optional
+await reporter.wrap(async () => {
+  await riskyOperation()
+}, { rethrow: false })
+```
+
+### TUI app
+
+Pass a custom presenter to integrate with your TUI framework:
+
+```ts
+import { createReporter } from '@cluvo/sdk'
+import type { PresenterAdapter, PromptContext, PresenterAction } from '@cluvo/core'
+
+class MyTuiPresenter implements PresenterAdapter {
+  async prompt(context: PromptContext): Promise<PresenterAction | null> {
+    // Pause TUI rendering, show error prompt, resume
+    return { type: 'cancel' }
+  }
+}
+
+const reporter = createReporter({
+  repo: 'myorg/cli-tool',
+  app: { name: 'my-cli', version: '1.0.0' },
+  presenter: new MyTuiPresenter(),
+})
+```
+
 ## Usage
+
+### New API
+
+#### `reportAndPrompt(error, context?)`
+
+Combines `reportError` and `promptAndSubmit` into a single call. The most common pattern for catch blocks:
+
+```ts
+try {
+  await deploy()
+} catch (error) {
+  await reporter.reportAndPrompt(error)
+}
+```
+
+#### `wrap(fn, opts?)`
+
+Wraps an async function with try/catch. Reports errors automatically.
+
+```ts
+await reporter.wrap(async () => {
+  await riskyOperation()
+}, { rethrow: false }) // rethrow: true by default
+```
+
+#### `wrapCommand(fn)`
+
+Like `wrap`, but also captures `process.argv` as command context:
+
+```ts
+await reporter.wrapCommand(async () => {
+  await runCLI()
+})
+```
+
+#### `installExitHandler(opts?)`
+
+Catches unreported errors at process exit via `process.on('beforeExit')`. Optionally intercepts `process.exit()` calls.
+
+```ts
+reporter.installExitHandler({ interceptProcessExit: true, timeout: 5000 })
+```
+
+#### `receiveChildReport(report)`
+
+Receives an error report forwarded from a child SDK library (used automatically by the registry):
+
+```ts
+reporter.receiveChildReport(report)
+```
 
 ### Wrap a command (recommended)
 
@@ -107,6 +224,98 @@ Similar issues found:
 
 Sensitive data is redacted before the user ever sees it. They choose what happens next.
 
+## Presets
+
+Presets apply environment-specific defaults so you don't have to configure everything manually.
+
+| Field | `cli` (default) | `sdk` |
+|-------|-----------------|-------|
+| `interactive` | `'auto'` (TTY detection) | `'never'` |
+| `collect.argv` | `true` | `false` |
+| `presenter` | `TerminalPresenter` | `null` |
+| `nonInteractive` | `'save'` | `'save'` |
+
+Override any preset default by specifying the field explicitly:
+
+```ts
+const reporter = createReporter({
+  repo: 'myorg/cli-tool',
+  app: { name: 'my-cli', version: '1.0.0' },
+  preset: 'cli',         // or 'sdk'
+  interactive: 'never',  // overrides preset default
+})
+```
+
+## Presenter Adapter
+
+The presenter is responsible for prompting the user after an error is collected. Cluvo ships with a built-in `TerminalPresenter` (used by the `cli` preset), but you can replace it with any object that implements `PresenterAdapter`:
+
+```ts
+interface PresenterAdapter {
+  prompt(context: PromptContext): Promise<PresenterAction | null>
+}
+```
+
+`PromptContext` provides everything needed to render a prompt:
+
+```ts
+interface PromptContext {
+  report: ErrorReport
+  draft: DraftPayload
+  authAvailable: boolean
+  promptMessage?: string
+  branding?: BrandingConfig
+}
+```
+
+`PresenterAction` is a discriminated union of what the user chose:
+
+```ts
+type PresenterAction =
+  | { type: 'open' }
+  | { type: 'gh' }
+  | { type: 'view' }
+  | { type: 'react' }
+  | { type: 'save' }
+  | { type: 'cancel' }
+```
+
+To disable prompting entirely (e.g., in CI-only libraries), pass `presenter: null`:
+
+```ts
+createReporter({ ..., presenter: null })
+```
+
+## Nested Usage
+
+When a CLI app depends on an SDK library that also uses Cluvo, the global reporter registry automatically connects them. The library's reporter forwards errors to the CLI's presenter — no manual wiring needed.
+
+**CLI app:**
+```ts
+const cliReporter = createReporter({
+  repo: 'myorg/cli-tool',
+  app: { name: 'my-cli', version: '1.0.0' },
+  childPolicy: 'absorb', // absorb child errors and prompt via CLI's presenter
+})
+```
+
+**SDK library (installed as a dependency of the CLI):**
+```ts
+const libReporter = createReporter({
+  repo: 'myorg/my-lib',
+  app: { name: 'my-lib', version: '2.0.0' },
+  preset: 'sdk', // no presenter; forwards errors to parent if available
+})
+```
+
+`childPolicy` controls how the parent handles errors forwarded from child reporters:
+
+| Value | Behavior |
+|-------|----------|
+| `'absorb'` | Parent handles the error with its own presenter |
+| `'passthrough'` | Parent re-reports and re-prompts normally |
+| `'silent'` | Parent silently stores child errors |
+
 ## Configuration
 
 ```ts
@@ -115,12 +324,21 @@ const cluvo = createReporter({
   repo: 'owner/repo',
   app: { name: 'my-cli', version: '1.0.0' },
 
+  // Preset — applies environment-specific defaults
+  preset: 'cli',             // 'cli' (default) | 'sdk'
+
   // Publishing mode (fallback chain: browser → gh → API → file)
   mode: 'browser',           // 'browser' | 'gh' | 'api' | 'file'
 
   // Interactive behavior
   interactive: 'auto',       // 'auto' (TTY detection) | 'never'
   nonInteractive: 'save',    // 'save' | 'log' | 'silent'
+
+  // Custom presenter (overrides preset default)
+  presenter: new MyTuiPresenter(), // PresenterAdapter | null
+
+  // Child reporter behavior (when other Cluvo reporters forward errors here)
+  childPolicy: 'absorb',     // 'absorb' | 'passthrough' | 'silent'
 
   // Data collection
   collect: {

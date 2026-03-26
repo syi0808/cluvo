@@ -5,7 +5,7 @@ export function collectEnvironment(): EnvironmentPayload {
 	return {
 		os: `${platform()} ${release()}`,
 		arch: arch(),
-		runtimeVersion: process.version,
+		runtimeVersion: typeof Bun !== 'undefined' ? Bun.version : process.version,
 		shell: process.env.SHELL,
 		ci: !!(
 			process.env.CI ||

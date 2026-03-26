@@ -1,10 +1,5 @@
-import type { DraftPayload, ErrorReport, ExistingIssue, ReporterConfig } from '../types.js'
+import type { DraftPayload, ErrorReport, ExistingIssue, PresenterAction, ReporterConfig } from '../types.js'
 import { renderDetails, renderPromptMessage, renderSummary } from './render.js'
-
-export interface PresenterAction {
-	type: 'view' | 'react' | 'open' | 'gh' | 'save' | 'cancel'
-	issue?: ExistingIssue
-}
 
 export async function promptUser(
 	report: ErrorReport,
@@ -46,10 +41,14 @@ async function promptAction(
 	const key = await readKey()
 
 	switch (key) {
-		case 'v':
-			return { type: 'view', issue: report.matches?.[0] }
-		case 'r':
-			return { type: 'react', issue: report.matches?.[0] }
+		case 'v': {
+			const issue = report.matches?.[0]
+			return issue ? { type: 'view', issue } : await promptAction(report, draft, authAvailable)
+		}
+		case 'r': {
+			const issue = report.matches?.[0]
+			return issue ? { type: 'react', issue } : await promptAction(report, draft, authAvailable)
+		}
 		case 'o':
 			return { type: 'open' }
 		case 'g':

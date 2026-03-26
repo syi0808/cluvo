@@ -50,6 +50,7 @@ Error → Collector → Sanitizer → Store → Matcher → Formatter → Presen
 ```
 
 Each stage is a separate directory under `packages/core/src/` and independently testable.
+The presenter uses an Adapter pattern (`PresenterAdapter`) allowing custom UI implementations.
 
 ## TypeScript
 
