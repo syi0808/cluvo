@@ -1,12 +1,15 @@
 import type { DraftPayload, ErrorReport } from '../types.js'
+import { bold, boldCyan, dim, green, yellow } from './style.js'
 
 export function renderSummary(report: ErrorReport, draft: DraftPayload): string {
 	const lines: string[] = []
 
-	lines.push(`── Bug Report ${'─'.repeat(36)}`)
-	lines.push(draft.title)
+	lines.push(boldCyan(`── Bug Report ${'─'.repeat(36)}`))
+	lines.push(bold(draft.title))
 	lines.push(
-		`${report.environment.os} · ${report.app.runtime} ${report.environment.runtimeVersion} · ${report.environment.arch}`,
+		dim(
+			`${report.environment.os} · ${report.app.runtime} ${report.environment.runtimeVersion} · ${report.environment.arch}`,
+		),
 	)
 
 	if (report.command?.argv?.length) {
@@ -14,27 +17,27 @@ export function renderSummary(report: ErrorReport, draft: DraftPayload): string 
 	}
 
 	if (report.sanitizedFields.length > 0) {
-		lines.push(`${report.sanitizedFields.length} field(s) sanitized`)
+		lines.push(yellow(`${report.sanitizedFields.length} field(s) sanitized`))
 	}
 
 	if (report.matches?.length) {
 		lines.push('')
-		lines.push('Similar issues found:')
+		lines.push(yellow('Similar issues found:'))
 		for (const match of report.matches.slice(0, 3)) {
-			const state = match.state === 'open' ? 'open' : 'closed'
-			lines.push(`  #${match.number} [${state}]  ${match.title}`)
+			const stateLabel = match.state === 'open' ? green('[open]') : dim('[closed]')
+			lines.push(`  #${match.number} ${stateLabel}  ${match.title}`)
 		}
 	}
 
-	lines.push('─'.repeat(50))
+	lines.push(dim('─'.repeat(50)))
 	return lines.join('\n')
 }
 
 export function renderDetails(draft: DraftPayload): string {
-	return `── Full Report ${'─'.repeat(35)}\n\n${draft.body}\n${'─'.repeat(50)}`
+	return `${boldCyan(`── Full Report ${'─'.repeat(35)}`)}\n\n${draft.body}\n${dim('─'.repeat(50))}`
 }
 
 export function renderPromptMessage(customMessage?: string, showBranding?: boolean): string {
 	const brand = showBranding ? 'Cluvo can prepare' : 'Prepare'
-	return customMessage ?? `${brand} a sanitized bug report? (Y/n)`
+	return customMessage ?? bold(`${brand} a sanitized bug report? (Y/n)`)
 }

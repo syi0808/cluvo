@@ -11,7 +11,8 @@
     "check": "biome check",
     "format": "biome check --write",
     "release": "pubm --mode ci --phase prepare",
-    "release:ci": "pubm --mode ci --phase publish"
+    "release:ci": "pubm --mode ci --phase publish",
+    "changesets:add": "pubm changesets add"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.4.8",

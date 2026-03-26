@@ -64,7 +64,7 @@ This project uses pubm changesets to track changes and automate versioning.
 
 ### Rules
 - Every PR that changes runtime code must include a changeset file
-- Add a changeset: `pubm changesets add`
+- Add a changeset: `bun run changesets:add`
 - Changeset identifiers use package path (e.g., `packages/core`), not registry name. Package names are also accepted and auto-resolved to paths.
 - Changeset summaries should be written from the user's perspective
 - PRs with `no-changeset` label skip the changeset check (use for docs, CI config, etc.)

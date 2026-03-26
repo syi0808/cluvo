@@ -1,6 +1,9 @@
-import { describe, expect, test } from 'bun:test'
+import { beforeAll, describe, expect, test } from 'bun:test'
 import { renderPromptMessage, renderSummary } from '../src/presenter/render.js'
+import { setColorEnabled } from '../src/presenter/style.js'
 import type { DraftPayload, ErrorReport } from '../src/types.js'
+
+beforeAll(() => setColorEnabled(false))
 
 describe('renderPromptMessage', () => {
 	test('returns custom message when provided', () => {
