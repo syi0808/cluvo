@@ -257,12 +257,13 @@ describe('nested reporters', () => {
 	// === reportError only + exit handler ===
 
 	test('reportError only + exit handler triggers prompt for pending', async () => {
-		const prompted = mock(async () => {})
 		const reporter = createReporter({
 			repo: 'owner/repo',
 			app: { name: 'exit-test', version: '1.0.0' },
 			store: { enabled: true },
 			dedupe: { enabled: false },
+			interactive: 'never',
+			nonInteractive: 'silent',
 			_storeDir: storeDir,
 		} satisfies InternalConfig)
 

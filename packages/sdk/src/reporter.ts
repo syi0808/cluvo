@@ -55,6 +55,8 @@ export function createReporter(userConfig: ReporterConfig | InternalConfig): Rep
 	let presenter: PresenterAdapter | null
 	if (config.presenter !== undefined) {
 		presenter = config.presenter
+	} else if (config.interactive === 'never') {
+		presenter = null
 	} else {
 		const presetPresenter = PRESETS[presetName]?.presenter
 		presenter = presetPresenter === 'terminal' ? new TerminalPresenter() : null
