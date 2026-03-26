@@ -10,12 +10,31 @@ Creates a reporter instance.
 | `app.name` | `string` | Yes | Application name |
 | `app.version` | `string` | Yes | Application version |
 | `app.gitSha` | `string` | No | Git commit SHA |
+| `preset` | `'cli' \| 'sdk'` | No | Environment preset (default: `'cli'`) |
+| `presenter` | `PresenterAdapter \| null` | No | Custom presenter adapter |
+| `childPolicy` | `'absorb' \| 'passthrough' \| 'silent'` | No | Policy for child reporters (default: `'passthrough'`) |
 
 ## High-Level Methods
 
+### `reporter.reportAndPrompt(error, context?): Promise<void>`
+
+Combines `reportError` + `promptAndSubmit` in one call. The simplest way to report an error.
+
+### `reporter.wrap(fn, opts?): Promise<void>`
+
+Wraps an async function. On error: capture → sanitize → prompt → submit. Re-throws by default.
+
+- `opts.rethrow` — Re-throw after reporting (default: `true`)
+
+### `reporter.wrapCommand(fn, opts?): Promise<void>`
+
+Like `wrap` but captures `process.argv` as CLI context. Re-throws by default.
+
+- `opts.rethrow` — Re-throw after reporting (default: `true`)
+
 ### `reporter.reportError(error, context?): Promise<ErrorReport>`
 
-Never throws. Returns a report even on internal failure.
+Never throws. Returns a report even on internal failure. Deduplicates — same error object returns the cached report.
 
 **ErrorContext:**
 
@@ -28,16 +47,22 @@ Never throws. Returns a report even on internal failure.
 
 ### `reporter.promptAndSubmit(report): Promise<void>`
 
-In TTY: shows interactive prompt (view, react, open, gh, save, cancel).
-In non-TTY: follows `nonInteractive` config setting (save/log/silent).
+Uses the presenter adapter to show the prompt. Falls back to non-interactive behavior when no presenter is available. Respects parent's `childPolicy` in nested hierarchies.
 
 ### `reporter.installGlobalHandlers(): () => void`
 
 Catches `uncaughtException` and `unhandledRejection`. Returns unsubscribe function.
 
-### `reporter.wrapCommand(fn): Promise<void>`
+### `reporter.installExitHandler(opts?): () => void`
 
-Wraps an async function. On error: capture → sanitize → prompt user → submit to GitHub. Re-throws the original error after handling.
+Catches unreported (pending) errors at process exit via `beforeExit`. Returns cleanup function.
+
+- `opts.interceptProcessExit` — Also monkey-patch `process.exit` (opt-in, default: `false`)
+- `opts.timeout` — Max wait time at exit (default: `30000` ms)
+
+### `reporter.receiveChildReport(report): Promise<void>`
+
+Receives a forwarded report from a child reporter (used by the registry under `absorb` policy).
 
 ## Low-Level Methods
 

@@ -54,9 +54,16 @@ Read `package.json` to get:
 
 If `repository` is not set, ask the user for the GitHub `owner/repo`.
 
-### 5. Insert integration code
+### 5. Determine project type and choose pattern
 
-Add the following to the entry point, wrapping the existing main logic:
+| Project Type | Preset | Integration Pattern |
+|-------------|--------|-------------------|
+| CLI tool (has `bin` field) | `'cli'` (default) | `wrapCommand` or `wrap` |
+| SDK/library | `'sdk'` | `wrap` with `rethrow: false` |
+
+### 6. Insert integration code
+
+**For CLI tools** (default — `preset: 'cli'`):
 
 ```typescript
 import { createReporter } from '@cluvo/sdk'
@@ -71,12 +78,32 @@ await cluvo.wrapCommand(async () => {
 })
 ```
 
+**For SDK/library projects** (`preset: 'sdk'`):
+
+```typescript
+import { createReporter } from '@cluvo/sdk'
+
+const cluvo = createReporter({
+  repo: '<owner>/<repo>',
+  app: { name: '<name>', version: '<version>' },
+  preset: 'sdk',
+})
+
+export async function riskyOperation() {
+  await cluvo.wrap(async () => {
+    // ... operation logic ...
+  }, { rethrow: false })
+}
+```
+
 **Important notes:**
-- `wrapCommand` catches errors, runs the sanitize → prompt → submit pipeline, then **re-throws** the original error so the process exits normally with an error code.
+- `wrapCommand` catches errors, extracts `process.argv` context, runs the sanitize → prompt → submit pipeline, then **re-throws** the original error (unless `{ rethrow: false }` is passed).
+- `wrap` is like `wrapCommand` but without CLI-specific `process.argv` context extraction.
+- The `'sdk'` preset disables interactive prompting and argv collection — errors are stored locally and can be forwarded to a parent CLI reporter via the registry.
 - Preserve existing imports and module structure. Only wrap the main execution logic.
 - If the entry point uses CommonJS (`require`), use `require('@cluvo/sdk')` instead.
 
-### 6. Completion message
+### 7. Completion message
 
 After successful integration, inform the user:
 

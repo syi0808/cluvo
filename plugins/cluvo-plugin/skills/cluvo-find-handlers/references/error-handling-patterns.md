@@ -2,13 +2,56 @@
 
 ## Decision Rules
 
-- **try/catch in command handlers or top-level operations** → Manual level
+- **try/catch in command handlers or top-level operations** → `reportAndPrompt` (simplest)
+- **Wrapping an entire async function** → `wrap(fn)` or `wrap(fn, { rethrow: false })`
+- **Need separate report + prompt control** → Manual level (`reportError` + `promptAndSubmit`)
 - **No global error handlers exist** → `installGlobalHandlers()` at app startup
-- **try/catch where the caller needs fine-grained control** (retry logic, custom formatting, conditional reporting) → Low-level pipeline
+- **Using `reportError` without `promptAndSubmit`** → Add `installExitHandler()` to catch pending reports
+- **try/catch with fine-grained control** (retry logic, custom formatting, conditional reporting) → Low-level pipeline
+- **SDK/library consumed by a CLI app** → Nested reporter pattern with `childPolicy`
+
+## reportAndPrompt Pattern (Recommended)
+
+The simplest way to report and prompt in one call. Use for most try/catch blocks.
+
+```typescript
+try {
+  await riskyOperation()
+} catch (error) {
+  await cluvo.reportAndPrompt(error, {
+    command: '<command-name>',
+    argv: process.argv.slice(2),
+  })
+}
+```
+
+## wrap Pattern
+
+Use when you want to wrap an entire async function without manual try/catch.
+
+```typescript
+// Re-throws by default (CLI commands)
+await cluvo.wrap(async () => {
+  await riskyOperation()
+})
+
+// Swallow error (SDK/library code)
+await cluvo.wrap(async () => {
+  await riskyOperation()
+}, { rethrow: false })
+```
+
+`wrapCommand` is the CLI variant — automatically captures `process.argv` as context:
+
+```typescript
+await cluvo.wrapCommand(async () => {
+  await runCliCommand()
+})
+```
 
 ## Manual Level Pattern
 
-Use for try/catch blocks in command handlers or top-level operations.
+Use when you need separate control over reporting and prompting.
 
 ```typescript
 try {
@@ -23,6 +66,7 @@ try {
 ```
 
 - `reportError` never throws — it always returns a report (even on internal failure)
+- Deduplicates automatically — same error object returns the cached report
 - Populate `command` and `subcommand` from context if available
 - Add relevant `metadata` if the catch block has useful context
 
@@ -34,6 +78,45 @@ Use when no process-level error handlers exist.
 // At app startup, after createReporter
 const unsubscribe = cluvo.installGlobalHandlers()
 ```
+
+## Exit Handler Pattern
+
+Use when `reportError` is called without `promptAndSubmit` (e.g., in library code). The exit handler catches pending reports before the process exits.
+
+```typescript
+const cleanup = cluvo.installExitHandler()
+
+// Optional: also intercept process.exit calls
+const cleanup = cluvo.installExitHandler({ interceptProcessExit: true })
+```
+
+## Nested Reporter Pattern
+
+Use when a CLI app consumes SDK libraries that both use Cluvo.
+
+```typescript
+// In CLI app (parent):
+const cliReporter = createReporter({
+  repo: 'myorg/cli-tool',
+  app: { name: 'my-cli', version: '1.0.0' },
+  childPolicy: 'absorb', // forward child errors to this reporter's presenter
+})
+
+// In SDK library (child, auto-detected via registry):
+const libReporter = createReporter({
+  repo: 'myorg/my-lib',
+  app: { name: 'my-lib', version: '2.0.0' },
+  preset: 'sdk',
+})
+```
+
+**childPolicy options:**
+
+| Policy | Behavior |
+|--------|----------|
+| `absorb` | Child forwards report to parent's presenter. Child still stores locally. |
+| `passthrough` | Child handles its own prompt normally. |
+| `silent` | Child stores only, no prompt. |
 
 ## Low-Level Pipeline Pattern
 
