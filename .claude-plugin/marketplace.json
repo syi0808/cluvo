@@ -5,18 +5,24 @@
 	},
 	"metadata": {
 		"description": "Plugin marketplace for cluvo - local-first bug reporting SDK for open-source CLIs/SDKs",
-		"version": "0.0.1"
+		"version": "0.1.0"
 	},
 	"plugins": [
 		{
 			"name": "cluvo-plugin",
 			"source": "./plugins/cluvo-plugin",
 			"description": "Claude Code skills for integrating @cluvo/sdk bug reporting into any CLI/SDK project — setup, error handler discovery, and configuration customization.",
-			"version": "0.0.1",
+			"version": "0.1.0",
 			"author": {
 				"name": "cluvo"
 			},
-			"keywords": ["cluvo", "bug-reporting", "error-reporting", "github-issues", "sdk"],
+			"keywords": [
+				"cluvo",
+				"bug-reporting",
+				"error-reporting",
+				"github-issues",
+				"sdk"
+			],
 			"category": "devtools"
 		}
 	]

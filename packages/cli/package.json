@@ -1,6 +1,6 @@
 {
 	"name": "@cluvo/cli",
-	"version": "0.0.1",
+	"version": "0.1.0",
 	"type": "module",
 	"bin": {
 		"cluvo": "./dist/bin.cjs"
