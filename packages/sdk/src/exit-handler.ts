@@ -17,10 +17,14 @@ export function createExitHandler(config: ExitHandlerConfig): () => void {
 		try {
 			const pending = await config.getPendingReports()
 			if (pending.length > 0) {
+				let timer: ReturnType<typeof setTimeout> | undefined
 				await Promise.race([
 					config.onPending(pending),
-					new Promise<void>((resolve) => setTimeout(resolve, timeout)),
+					new Promise<void>((resolve) => {
+						timer = setTimeout(resolve, timeout)
+					}),
 				])
+				clearTimeout(timer)
 			}
 		} catch {
 			// swallow – keep handling=true so beforeExit re-fires are ignored
@@ -39,10 +43,14 @@ export function createExitHandler(config: ExitHandlerConfig): () => void {
 
 			config.getPendingReports().then(async (pending) => {
 				if (pending.length > 0) {
+					let timer: ReturnType<typeof setTimeout> | undefined
 					await Promise.race([
 						config.onPending(pending),
-						new Promise<void>((resolve) => setTimeout(resolve, timeout)),
+						new Promise<void>((resolve) => {
+							timer = setTimeout(resolve, timeout)
+						}),
 					])
+					clearTimeout(timer)
 				}
 				originalExit!(exitCode as any)
 			}).catch(() => {
