@@ -22,8 +22,8 @@ export function createExitHandler(config: ExitHandlerConfig): () => void {
 					new Promise<void>((resolve) => setTimeout(resolve, timeout)),
 				])
 			}
-		} finally {
-			handling = false
+		} catch {
+			// swallow – keep handling=true so beforeExit re-fires are ignored
 		}
 	}
 

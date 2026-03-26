@@ -364,6 +364,26 @@ describe('createReporter', () => {
 		expect(loaded).not.toBeNull()
 	})
 
+	test('promptAndSubmit sets status to dismissed on cancel', async () => {
+		const reporter = createReporter({
+			repo: 'owner/repo',
+			app: { name: 'cancel-test', version: '1.0.0' },
+			interactive: 'always',
+			store: { enabled: true },
+			dedupe: { enabled: false },
+			_storeDir: storeDir,
+		} satisfies InternalConfig)
+
+		const report = await reporter.reportError(new Error('will cancel'))
+		// In non-TTY, TerminalPresenter.prompt() returns null → cancel path
+		await reporter.promptAndSubmit(report)
+
+		const { Store } = await import('@cluvo/core')
+		const store = new Store(storeDir)
+		const loaded = await store.load('cancel-test', report.id)
+		expect(loaded?.status).toBe('dismissed')
+	})
+
 	test('installExitHandler returns cleanup function', () => {
 		const reporter = createReporter({
 			repo: 'owner/repo',

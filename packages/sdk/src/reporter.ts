@@ -226,7 +226,10 @@ export function createReporter(userConfig: ReporterConfig | InternalConfig): Rep
 				branding: config.branding,
 			})
 
-			if (!action || action.type === 'cancel') return
+			if (!action || action.type === 'cancel') {
+				await store.updateStatus(report.app.name, report.id, 'dismissed')
+				return
+			}
 
 			switch (action.type) {
 				case 'view': {
@@ -252,6 +255,7 @@ export function createReporter(userConfig: ReporterConfig | InternalConfig): Rep
 					const path = `${config.storeDir}/drafts/cluvo-report-${Date.now()}.md`
 					await saveReportFile(draft, path)
 					process.stdout.write(`Saved to ${path}\n`)
+					await store.updateStatus(report.app.name, report.id, 'dismissed')
 					break
 				}
 			}
