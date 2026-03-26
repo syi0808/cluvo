@@ -1,6 +1,6 @@
 {
 	"name": "@cluvo/core",
-	"version": "0.1.0",
+	"version": "0.1.1",
 	"description": "Zero-dependency pipeline stages for local-first bug reporting",
 	"keywords": ["bug-reporting", "error-reporting", "cli", "sdk", "open-source", "privacy", "local-first"],
 	"license": "Apache-2.0",
