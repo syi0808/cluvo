@@ -13,6 +13,9 @@ export interface RunResult {
 
 const PROJECT_ROOT = join(import.meta.dir, '..', '..', '..')
 
+/** Absolute path to the SDK source entry, for use in subprocess script imports. */
+export const SDK_IMPORT = join(PROJECT_ROOT, 'packages', 'sdk', 'src', 'index.js')
+
 export async function runScript(
   code: string,
   options: {
