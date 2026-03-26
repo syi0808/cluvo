@@ -25,7 +25,7 @@ Then stop.
 
 ### 1. Locate existing Cluvo reporter instance
 
-Search for `createReporter` in the codebase to find the existing reporter instance and its variable name (e.g., `cluvo`, `reporter`). If not found, tell the user to run `/cluvo-setup` first.
+Search for `new Reporter(` or `createReporter(` in the codebase to find the existing reporter instance and its variable name (e.g., `cluvo`, `reporter`). If not found, tell the user to run `/cluvo-setup` first.
 
 ### 2. Scan for error handling locations
 

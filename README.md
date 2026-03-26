@@ -46,9 +46,9 @@ bun add -g @cluvo/cli
 Use the `cli` preset (default) when integrating into an interactive command-line tool. It auto-creates a `TerminalPresenter`, collects `process.argv`, and prompts the user on error.
 
 ```ts
-import { createReporter } from '@cluvo/sdk'
+import { Reporter } from '@cluvo/sdk'
 
-const reporter = createReporter({
+const reporter = new Reporter({
   repo: 'myorg/cli-tool',
   app: { name: 'my-cli', version: '1.0.0' },
   // preset: 'cli' is the default
@@ -72,9 +72,9 @@ try {
 Use the `sdk` preset when integrating into a library. It disables the presenter and sets `interactive: 'never'` — errors are stored locally and the parent CLI (if any) handles prompting.
 
 ```ts
-import { createReporter } from '@cluvo/sdk'
+import { Reporter } from '@cluvo/sdk'
 
-const reporter = createReporter({
+const reporter = new Reporter({
   repo: 'myorg/my-lib',
   app: { name: 'my-lib', version: '2.0.0' },
   preset: 'sdk',
@@ -91,7 +91,7 @@ await reporter.wrap(async () => {
 Pass a custom presenter to integrate with your TUI framework:
 
 ```ts
-import { createReporter } from '@cluvo/sdk'
+import { Reporter } from '@cluvo/sdk'
 import type { PresenterAdapter, PromptContext, PresenterAction } from '@cluvo/core'
 
 class MyTuiPresenter implements PresenterAdapter {
@@ -101,7 +101,7 @@ class MyTuiPresenter implements PresenterAdapter {
   }
 }
 
-const reporter = createReporter({
+const reporter = new Reporter({
   repo: 'myorg/cli-tool',
   app: { name: 'my-cli', version: '1.0.0' },
   presenter: new MyTuiPresenter(),
@@ -163,9 +163,9 @@ reporter.receiveChildReport(report)
 ### Wrap a command (recommended)
 
 ```ts
-import { createReporter } from '@cluvo/sdk'
+import { Reporter } from '@cluvo/sdk'
 
-const cluvo = createReporter({
+const cluvo = new Reporter({
   repo: 'acme/my-tool',
   app: { name: 'my-tool', version: '2.0.0' },
 })
@@ -238,7 +238,7 @@ Presets apply environment-specific defaults so you don't have to configure every
 Override any preset default by specifying the field explicitly:
 
 ```ts
-const reporter = createReporter({
+const reporter = new Reporter({
   repo: 'myorg/cli-tool',
   app: { name: 'my-cli', version: '1.0.0' },
   preset: 'cli',         // or 'sdk'
@@ -283,7 +283,7 @@ type PresenterAction =
 To disable prompting entirely (e.g., in CI-only libraries), pass `presenter: null`:
 
 ```ts
-createReporter({ ..., presenter: null })
+new Reporter({ ..., presenter: null })
 ```
 
 ## Nested Usage
@@ -292,7 +292,7 @@ When a CLI app depends on an SDK library that also uses Cluvo, the global report
 
 **CLI app:**
 ```ts
-const cliReporter = createReporter({
+const cliReporter = new Reporter({
   repo: 'myorg/cli-tool',
   app: { name: 'my-cli', version: '1.0.0' },
   childPolicy: 'absorb', // absorb child errors and prompt via CLI's presenter
@@ -301,7 +301,7 @@ const cliReporter = createReporter({
 
 **SDK library (installed as a dependency of the CLI):**
 ```ts
-const libReporter = createReporter({
+const libReporter = new Reporter({
   repo: 'myorg/my-lib',
   app: { name: 'my-lib', version: '2.0.0' },
   preset: 'sdk', // no presenter; forwards errors to parent if available
@@ -319,7 +319,7 @@ const libReporter = createReporter({
 ## Configuration
 
 ```ts
-const cluvo = createReporter({
+const cluvo = new Reporter({
   // Required
   repo: 'owner/repo',
   app: { name: 'my-cli', version: '1.0.0' },
@@ -415,7 +415,7 @@ Reports are stored at `~/.cluvo/reports/` as JSON files, organized by app name.
 | Package | Description |
 |---------|-------------|
 | [`@cluvo/core`](packages/core) | Collector, sanitizer, formatter, matcher, publisher, presenter, store |
-| [`@cluvo/sdk`](packages/sdk) | `createReporter()` — the main integration API |
+| [`@cluvo/sdk`](packages/sdk) | `new Reporter()` — the main integration API |
 | [`@cluvo/cli`](packages/cli) | CLI for managing stored reports |
 
 ## How It Works

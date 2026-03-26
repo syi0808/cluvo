@@ -3,18 +3,18 @@ name: cluvo-custom-config
 description: |
   Customize Cluvo reporter configuration: sanitize rules, issue labels/format,
   dedupe, store, collect options, publish mode, and non-interactive behavior.
-  Finds the existing createReporter call and modifies its config.
+  Finds the existing Reporter constructor call and modifies its config.
   TRIGGER when: user asks to "customize cluvo", "cluvo 설정", "add sanitize rule",
   "sanitize 규칙 추가", "issue 라벨 설정", "cluvo config", "cluvo-custom-config".
 ---
 
 # Cluvo Custom Config
 
-Tune `createReporter` configuration to match your project's needs.
+Tune `new Reporter()` configuration to match your project's needs.
 
 ## Prerequisites
 
-Search for `createReporter` in the codebase. If not found:
+Search for `new Reporter(` or `createReporter(` in the codebase. If not found:
 
 > Cluvo is not set up yet. Run `/cluvo-setup` first.
 
@@ -24,7 +24,7 @@ Then stop.
 
 ### 1. Read current config
 
-Find the `createReporter(...)` call and display the current configuration to the user.
+Find the `new Reporter(...)` call and display the current configuration to the user.
 
 ### 2. Ask what to customize
 
@@ -49,7 +49,7 @@ Ask the user which area(s) they want to configure.
 
 ### 3. Apply configuration
 
-Modify the `createReporter` config object based on user choices. Below are patterns for each area.
+Modify the `new Reporter()` config object based on user choices. Below are patterns for each area.
 
 #### Preset
 
@@ -76,7 +76,7 @@ class MyPresenter implements PresenterAdapter {
   }
 }
 
-const cluvo = createReporter({
+const cluvo = new Reporter({
   // ...
   presenter: new MyPresenter(),
 })
@@ -101,7 +101,7 @@ childPolicy: 'absorb'  // 'absorb' | 'passthrough' | 'silent'
 Add custom `SanitizeRule` entries to catch project-specific secrets:
 
 ```typescript
-const cluvo = createReporter({
+const cluvo = new Reporter({
   repo: 'owner/repo',
   app: { name: 'my-cli', version: '1.0.0' },
   sanitize: {
@@ -127,7 +127,7 @@ const cluvo = createReporter({
 #### Issue — Labels, Title, Sections
 
 ```typescript
-const cluvo = createReporter({
+const cluvo = new Reporter({
   // ...
   issue: {
     labels: ['bug', 'cluvo-report', 'needs-triage'],

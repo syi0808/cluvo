@@ -3,7 +3,7 @@ name: cluvo-setup
 description: |
   Install @cluvo/sdk and add basic bug reporting to a CLI/SDK project.
   Detects runtime (Node.js/Bun), package manager (npm/yarn/pnpm/bun),
-  finds the entry point, and inserts createReporter + wrapCommand boilerplate.
+  finds the entry point, and inserts new Reporter() + wrapCommand boilerplate.
   TRIGGER when: user asks to "add cluvo", "install cluvo", "cluvo 설치",
   "cluvo 연동", "add bug reporting", "버그 리포팅 추가".
 ---
@@ -66,9 +66,9 @@ If `repository` is not set, ask the user for the GitHub `owner/repo`.
 **For CLI tools** (default — `preset: 'cli'`):
 
 ```typescript
-import { createReporter } from '@cluvo/sdk'
+import { Reporter } from '@cluvo/sdk'
 
-const cluvo = createReporter({
+const cluvo = new Reporter({
   repo: '<owner>/<repo>',
   app: { name: '<name>', version: '<version>' },
 })
@@ -81,9 +81,9 @@ await cluvo.wrapCommand(async () => {
 **For SDK/library projects** (`preset: 'sdk'`):
 
 ```typescript
-import { createReporter } from '@cluvo/sdk'
+import { Reporter } from '@cluvo/sdk'
 
-const cluvo = createReporter({
+const cluvo = new Reporter({
   repo: '<owner>/<repo>',
   app: { name: '<name>', version: '<version>' },
   preset: 'sdk',
@@ -116,4 +116,4 @@ After successful integration, inform the user:
 
 ## API Reference
 
-Read [references/sdk-api.md](references/sdk-api.md) for the full `createReporter` and `Reporter` API.
+Read [references/sdk-api.md](references/sdk-api.md) for the full `Reporter` constructor and instance API.

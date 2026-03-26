@@ -40,7 +40,7 @@ Cluvo is a **local-first bug reporting SDK** for open-source CLIs/SDKs. It captu
 Three packages with a linear dependency chain: **core → sdk → cli**
 
 - **`@cluvo/core`** — Zero-dependency pipeline stages (collector, sanitizer, store, matcher, formatter, presenter, publisher, diagnostic)
-- **`@cluvo/sdk`** — High-level `createReporter()` API; resolves config with defaults via `resolveConfig()`
+- **`@cluvo/sdk`** — High-level `new Reporter()` API; resolves config with defaults via `resolveConfig()`
 - **`@cluvo/cli`** — `cluvo` command for managing stored reports (list, show, submit, dismiss, clean)
 
 ### Core Pipeline

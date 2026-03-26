@@ -40,7 +40,7 @@ This document provides a comprehensive architectural overview of Cluvo, includin
 User Code            SDK Layer           Core Modules        External
 ─────────            ─────────           ────────────        ────────
 
-try {               createReporter()  →  Collector       →  GitHub API
+try {               new Reporter()    →  Collector       →  GitHub API
   app.run()            (sdk)             Sanitizer           GitHub Issues
 } catch (err) {        • Config          Store               gh CLI
   reporter             • Orchestrate     Matcher             Browser
@@ -58,7 +58,7 @@ try {               createReporter()  →  Collector       →  GitHub API
 | Component | Package | Responsibility |
 |-----------|---------|----------------|
 | **Core** | `packages/core` | Zero-dependency pipeline stages (collector, sanitizer, store, matcher, formatter, presenter, publisher, diagnostic) |
-| **SDK** | `packages/sdk` | High-level `createReporter()` API, config resolution, lifecycle orchestration |
+| **SDK** | `packages/sdk` | High-level `Reporter` class API, config resolution, lifecycle orchestration |
 | **CLI** | `packages/cli` | `cluvo` command for managing stored reports (list, show, submit, dismiss, clean) |
 | **Plugin** | `plugins/cluvo-plugin` | Claude Code skills for guided SDK onboarding |
 
@@ -94,7 +94,7 @@ cluvo/
 │   ├── sdk/                               @cluvo/sdk (Orchestration)
 │   │   ├── src/
 │   │   │   ├── index.ts                   Reporter interface exports
-│   │   │   ├── reporter.ts                createReporter() implementation
+│   │   │   ├── reporter.ts                Reporter class implementation
 │   │   │   └── config.ts                  resolveConfig() with defaults
 │   │   └── test/                          3 test files
 │   │
@@ -162,7 +162,7 @@ graph TD
 |------|-----|------|--------|
 | `@cluvo/sdk` → `@cluvo/core` | dependency | SDK orchestrates core pipeline stages |
 | `@cluvo/cli` → `@cluvo/core` | dependency | CLI uses Store, Formatter directly |
-| `@cluvo/cli` → `@cluvo/sdk` | dependency | CLI uses createReporter for submit |
+| `@cluvo/cli` → `@cluvo/sdk` | dependency | CLI uses Reporter for submit |
 
 ### Linear Dependency Chain
 
@@ -263,7 +263,7 @@ Each module is independently importable and testable — no cross-module depende
 
 ### Pipeline Entry Point
 
-`createReporter(config)` in `sdk/src/reporter.ts` orchestrates the full pipeline. The `reportError()` method drives collection, and `promptAndSubmit()` drives user interaction and submission.
+`new Reporter(config)` in `sdk/src/reporter.ts` orchestrates the full pipeline. The `reportError()` method drives collection, and `promptAndSubmit()` drives user interaction and submission.
 
 ### Complete Pipeline Flow
 
@@ -647,7 +647,7 @@ getGithubToken()
 ```
 packages/sdk/src/
 ├── index.ts              Reporter interface exports
-├── reporter.ts           createReporter() implementation
+├── reporter.ts           Reporter class implementation
 ├── config.ts             resolveConfig() with defaults
 ├── presets.ts            CLI and SDK preset definitions
 ├── registry.ts           Global reporter registry (Symbol.for cross-package)
@@ -657,7 +657,7 @@ packages/sdk/src/
 
 ### Reporter Interface
 
-The SDK exposes a single `createReporter()` factory that returns a `Reporter` object:
+The SDK exposes a `Reporter` class that implements the full reporting interface:
 
 ```typescript
 interface Reporter {
@@ -840,13 +840,13 @@ Cluvo involves two distinct personas: the **integrator** (CLI/SDK maintainer who
   │     → wrapCommand()  (preset: 'cli', recommended)
   │
   ├─ CLI app with TUI (ink, blessed, etc.)
-  │     → Custom PresenterAdapter + createReporter({ presenter })
+  │     → Custom PresenterAdapter + new Reporter({ presenter })
   │
   ├─ SDK / library (no interactive prompts)
-  │     → createReporter({ preset: 'sdk' }) + wrap()
+  │     → new Reporter({ preset: 'sdk' }) + wrap()
   │
   ├─ CLI app that depends on SDK libraries using Cluvo
-  │     → createReporter({ childPolicy: 'absorb' }) (registry auto-wires)
+  │     → new Reporter({ childPolicy: 'absorb' }) (registry auto-wires)
   │
   └─ Async-heavy app needing global coverage
         → installGlobalHandlers() + installExitHandler()
@@ -883,9 +883,9 @@ Cluvo involves two distinct personas: the **integrator** (CLI/SDK maintainer who
 ### Strategy A: wrapCommand (Recommended)
 
 ```typescript
-import { createReporter } from '@cluvo/sdk'
+import { Reporter } from '@cluvo/sdk'
 
-const cluvo = createReporter({
+const cluvo = new Reporter({
   repo: 'acme/my-cli',
   app: { name: 'my-cli', version: '2.0.0' },
 })
@@ -918,7 +918,7 @@ wrapCommand(fn)
 ### Strategy B: Global Handlers
 
 ```typescript
-const cluvo = createReporter({
+const cluvo = new Reporter({
   repo: 'acme/my-cli',
   app: { name: 'my-cli', version: '2.0.0' },
 })
@@ -947,7 +947,7 @@ handler(error):
 ### Strategy C: Manual Error Handling
 
 ```typescript
-const cluvo = createReporter({
+const cluvo = new Reporter({
   repo: 'acme/my-cli',
   app: { name: 'my-cli', version: '2.0.0' },
 })
@@ -970,9 +970,9 @@ try {
 For libraries that should store errors without prompting the user:
 
 ```typescript
-import { createReporter } from '@cluvo/sdk'
+import { Reporter } from '@cluvo/sdk'
 
-const reporter = createReporter({
+const reporter = new Reporter({
   repo: 'acme/my-lib',
   app: { name: 'my-lib', version: '1.0.0' },
   preset: 'sdk', // no presenter, no argv, interactive: 'never'
@@ -992,7 +992,7 @@ For terminal apps using a TUI framework (ink, blessed, etc.):
 
 ```typescript
 import type { PresenterAdapter, PromptContext, PresenterAction } from '@cluvo/core'
-import { createReporter } from '@cluvo/sdk'
+import { Reporter } from '@cluvo/sdk'
 
 class MyTuiPresenter implements PresenterAdapter {
   async prompt(context: PromptContext): Promise<PresenterAction | null> {
@@ -1004,7 +1004,7 @@ class MyTuiPresenter implements PresenterAdapter {
   }
 }
 
-const reporter = createReporter({
+const reporter = new Reporter({
   repo: 'acme/my-tui',
   app: { name: 'my-tui', version: '1.0.0' },
   presenter: new MyTuiPresenter(),
@@ -1018,10 +1018,10 @@ When a CLI depends on an SDK library that both use Cluvo, the registry connects 
 ```
 CLI process startup:
 
-  cliReporter = createReporter({ childPolicy: 'absorb' })
+  cliReporter = new Reporter({ childPolicy: 'absorb' })
     └─ Registers in global registry as a parent (has presenter)
 
-  libReporter = createReporter({ preset: 'sdk' })
+  libReporter = new Reporter({ preset: 'sdk' })
     └─ Registers in global registry as a child (no presenter)
 
 Error in library:
@@ -1098,7 +1098,7 @@ Reporter
 Integrators can add domain-specific redaction rules:
 
 ```typescript
-createReporter({
+new Reporter({
   // ...
   sanitize: {
     customRules: [
@@ -1361,7 +1361,7 @@ stateDiagram-v2
 │ Persona         │ Touchpoints                                                  │
 ├─────────────────┼──────────────────────────────────────────────────────────────┤
 │ Integrator      │ • Install @cluvo/sdk                                        │
-│ (CLI maintainer)│ • Configure createReporter() with repo, app, options        │
+│ (CLI maintainer)│ • Configure new Reporter() with repo, app, options          │
 │                 │ • Choose integration strategy (wrap / global / manual)       │
 │                 │ • Add custom sanitization rules for domain-specific data     │
 │                 │ • Customize issue labels, title format, sections             │
@@ -1455,7 +1455,7 @@ Only sanitized data is ever transmitted. Here is exactly what appears in a submi
 │ cluvo-plugin                                                             │
 ├──────────────────────────────────────────────────────────────────────────┤
 │ Skills:                                                                  │
-│   1. Setup         — Install @cluvo/sdk, configure createReporter()     │
+│   1. Setup         — Install @cluvo/sdk, configure new Reporter()       │
 │   2. Find Handlers — Discover error handler locations in user's code    │
 │   3. Custom Config — Customize reporting config (labels, sections, etc.)│
 ├──────────────────────────────────────────────────────────────────────────┤

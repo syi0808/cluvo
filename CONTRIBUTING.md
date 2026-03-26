@@ -74,7 +74,7 @@ This is a Bun workspaces monorepo with three packages:
 ```
 packages/
 ├── core/   @cluvo/core — Zero-dependency pipeline modules
-├── sdk/    @cluvo/sdk  — High-level createReporter() API
+├── sdk/    @cluvo/sdk  — High-level Reporter class API
 └── cli/    @cluvo/cli  — CLI for managing stored reports
 ```
 

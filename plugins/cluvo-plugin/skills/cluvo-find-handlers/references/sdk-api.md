@@ -1,8 +1,8 @@
 # Cluvo SDK API Reference (Find Handlers)
 
-## `createReporter(config): Reporter`
+## `new Reporter(config)`
 
-Creates a reporter instance.
+Creates a reporter instance. Uses `new` to prevent Bun's tail-call optimization from dropping caller stack frames, enabling reliable top-level enforcement.
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|

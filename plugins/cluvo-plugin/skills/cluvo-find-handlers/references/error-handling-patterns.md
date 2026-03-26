@@ -75,7 +75,7 @@ try {
 Use when no process-level error handlers exist.
 
 ```typescript
-// At app startup, after createReporter
+// At app startup, after new Reporter()
 const unsubscribe = cluvo.installGlobalHandlers()
 ```
 
@@ -96,14 +96,14 @@ Use when a CLI app consumes SDK libraries that both use Cluvo.
 
 ```typescript
 // In CLI app (parent):
-const cliReporter = createReporter({
+const cliReporter = new Reporter({
   repo: 'myorg/cli-tool',
   app: { name: 'my-cli', version: '1.0.0' },
   childPolicy: 'absorb', // forward child errors to this reporter's presenter
 })
 
 // In SDK library (child, auto-detected via registry):
-const libReporter = createReporter({
+const libReporter = new Reporter({
   repo: 'myorg/my-lib',
   app: { name: 'my-lib', version: '2.0.0' },
   preset: 'sdk',
