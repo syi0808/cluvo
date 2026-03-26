@@ -46,7 +46,92 @@ export interface Reporter {
 	receiveChildReport(report: ErrorReport): Promise<void>
 }
 
+/**
+ * Capture the call stack depth at the createReporter() call site.
+ * Used to reconstruct parent-child hierarchy from ESM post-order execution.
+ */
+function captureCallDepth(): number {
+	return (new Error().stack ?? '').split('\n').length
+}
+
+/**
+ * Detect whether createReporter() was called at module top-level.
+ * Uses V8/JSC structured stack trace API (supported by Node.js and Bun).
+ *
+ * At module top-level, the caller frame has no function name.
+ * V8 returns null, Bun/JSC returns "" — both are treated as top-level.
+ * Inside a named function, getFunctionName() returns the function name.
+ */
+function isModuleTopLevel(): boolean {
+	const orig = Error.prepareStackTrace
+	let callSites: { getFileName?(): string | null; getFunctionName?(): string | null }[] = []
+
+	Error.prepareStackTrace = (_, sites) => {
+		callSites = sites
+		return ''
+	}
+	const err = new Error()
+	void err.stack
+	Error.prepareStackTrace = orig
+
+	// Known internal function names to skip
+	const INTERNAL_FNS = new Set(['captureCallDepth', 'isModuleTopLevel', 'createReporter'])
+
+	// Walk up the stack to find the first frame outside SDK internals
+	for (const site of callSites) {
+		const fnName = site.getFunctionName?.()
+		if (fnName && INTERNAL_FNS.has(fnName)) continue
+
+		const fileName = site.getFileName?.() ?? ''
+		if (fileName.includes('@cluvo/') || fileName.includes('cluvo/packages/')) continue
+		if (fileName.startsWith('node:') || fileName.startsWith('bun:')) continue
+		if (!fileName) continue
+
+		// At module top-level: getFunctionName() is null (V8) or "" (Bun/JSC)
+		return !fnName
+	}
+	return true // couldn't determine → assume top-level
+}
+
+const NOOP_REPORT: ErrorReport = {
+	id: 'noop',
+	createdAt: '',
+	app: { name: 'noop', version: '0.0.0', runtime: 'unknown' },
+	error: { name: 'Noop', message: '' },
+	environment: { os: 'unknown', arch: 'unknown', runtimeVersion: 'unknown' },
+	sanitizedFields: [],
+	status: 'dismissed',
+}
+
+const NOOP_REPORTER: Reporter = {
+	reportError: async () => NOOP_REPORT,
+	reportAndPrompt: async () => {},
+	promptAndSubmit: async () => {},
+	wrap: async (fn) => {
+		await fn()
+	},
+	wrapCommand: async (fn) => {
+		await fn()
+	},
+	installGlobalHandlers: () => () => {},
+	installExitHandler: () => () => {},
+	buildReport: () => NOOP_REPORT,
+	sanitizeReport: (r) => r,
+	findMatches: async () => ({ found: false, matches: [] }),
+	buildDraft: () => ({ title: '', body: '' }),
+	publish: async () => ({ method: 'terminal' as const }),
+	receiveChildReport: async () => {},
+}
+
 export function createReporter(userConfig: ReporterConfig | InternalConfig): Reporter {
+	// Must be called at module top-level for correct hierarchy detection.
+	// If called inside a function, return a no-op reporter that silently does nothing.
+	const internalConfig = userConfig as InternalConfig
+	const callDepth = internalConfig._depth ?? captureCallDepth()
+	if (!internalConfig._skipTopLevelCheck && !isModuleTopLevel()) {
+		return NOOP_REPORTER
+	}
+
 	const config = resolveConfig(userConfig as InternalConfig)
 	const store = new Store(config.storeDir, config.store?.maxReports)
 
@@ -67,6 +152,7 @@ export function createReporter(userConfig: ReporterConfig | InternalConfig): Rep
 	const registry = getRegistry()
 	const registeredEntry = {
 		id: reporterId,
+		depth: callDepth,
 		reporter: { receiveChildReport },
 		childPolicy: config.childPolicy ?? 'passthrough',
 	}

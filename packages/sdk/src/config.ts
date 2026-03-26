@@ -4,6 +4,8 @@ import { PRESETS } from './presets.js'
 
 export interface InternalConfig extends ReporterConfig {
 	_storeDir?: string
+	_skipTopLevelCheck?: boolean
+	_depth?: number
 }
 
 export function resolveConfig(

@@ -15,9 +15,19 @@ describe('E2E: subprocess-sdk/nested', () => {
     await rm(storeDir, { recursive: true, force: true })
   })
 
+  // Post-order: child (deeper depth) registers before parent (shallower depth)
   const nestedScript = (childPolicy: string) => `
 import { createReporter } from '${SDK_IMPORT}';
 const storeDir = process.env.CLUVO_TEST_STORE_DIR!;
+
+const child = createReporter({
+  repo: 'test-owner/test-repo',
+  app: { name: 'child-sdk', version: '0.1.0' },
+  preset: 'sdk',
+  store: { enabled: true },
+  _storeDir: storeDir,
+  _depth: 7,
+});
 
 const parent = createReporter({
   repo: 'test-owner/test-repo',
@@ -27,30 +37,19 @@ const parent = createReporter({
   nonInteractive: 'silent',
   store: { enabled: true },
   _storeDir: storeDir,
-});
-
-const child = createReporter({
-  repo: 'test-owner/test-repo',
-  app: { name: 'child-sdk', version: '0.1.0' },
-  preset: 'sdk',
-  store: { enabled: true },
-  _storeDir: storeDir,
+  _depth: 5,
 });
 
 await child.reportAndPrompt(new Error('child error'));
 `
 
   test('1: absorb -- child report saved, parent presenter would be called', async () => {
-    // With absorb policy, child's promptAndSubmit forwards to parent's receiveChildReport.
-    // Parent's receiveChildReport saves the report (under child's app name) and calls promptAndSubmit.
-    // Both share the same storeDir, so the report is under child-sdk/.
     const result = await runScript(nestedScript('absorb'), {
       env: environments.pipe,
       storeDir,
       prependCode: mockFetchScript(),
     })
     expect(result.exitCode).toBe(0)
-    // Report is saved under child's app name by both child's reportError and parent's receiveChildReport
     const childReports = await readReports(storeDir, 'child-sdk')
     expect(childReports).toHaveLength(1)
   })
@@ -81,18 +80,20 @@ await child.reportAndPrompt(new Error('child error'));
     const script = `
 import { createReporter } from '${SDK_IMPORT}';
 const storeDir = process.env.CLUVO_TEST_STORE_DIR!;
+const child = createReporter({
+  repo: 'test-owner/test-repo',
+  app: { name: 'child-sdk', version: '0.1.0' },
+  preset: 'sdk',
+  store: { enabled: true }, _storeDir: storeDir,
+  _depth: 7,
+});
 const parent = createReporter({
   repo: 'test-owner/test-repo',
   app: { name: 'parent-cli', version: '1.0.0' },
   childPolicy: 'absorb',
   interactive: 'never', nonInteractive: 'silent',
   store: { enabled: true }, _storeDir: storeDir,
-});
-const child = createReporter({
-  repo: 'test-owner/test-repo',
-  app: { name: 'child-sdk', version: '0.1.0' },
-  preset: 'sdk',
-  store: { enabled: true }, _storeDir: storeDir,
+  _depth: 5,
 });
 await parent.reportError(new Error('parent error'));
 await child.reportError(new Error('child error'));
@@ -118,6 +119,7 @@ const child = createReporter({
   app: { name: 'standalone-sdk', version: '0.1.0' },
   preset: 'sdk',
   store: { enabled: true }, _storeDir: storeDir,
+  _depth: 7,
 });
 await child.reportAndPrompt(new Error('standalone error'));
 `
@@ -135,24 +137,27 @@ await child.reportAndPrompt(new Error('standalone error'));
     const script = `
 import { createReporter } from '${SDK_IMPORT}';
 const storeDir = process.env.CLUVO_TEST_STORE_DIR!;
-const grandparent = createReporter({
+const child = createReporter({
   repo: 'test-owner/test-repo',
-  app: { name: 'grandparent', version: '1.0.0' },
-  childPolicy: 'absorb',
-  interactive: 'never', nonInteractive: 'silent',
+  app: { name: 'child', version: '1.0.0' },
+  preset: 'sdk',
   store: { enabled: true }, _storeDir: storeDir,
+  _depth: 9,
 });
 const parent = createReporter({
   repo: 'test-owner/test-repo',
   app: { name: 'parent', version: '1.0.0' },
   childPolicy: 'absorb',
   store: { enabled: true }, _storeDir: storeDir,
+  _depth: 7,
 });
-const child = createReporter({
+const grandparent = createReporter({
   repo: 'test-owner/test-repo',
-  app: { name: 'child', version: '1.0.0' },
-  preset: 'sdk',
+  app: { name: 'grandparent', version: '1.0.0' },
+  childPolicy: 'absorb',
+  interactive: 'never', nonInteractive: 'silent',
   store: { enabled: true }, _storeDir: storeDir,
+  _depth: 5,
 });
 await child.reportAndPrompt(new Error('deep nested error'));
 `
@@ -162,8 +167,6 @@ await child.reportAndPrompt(new Error('deep nested error'));
       prependCode: mockFetchScript(),
     })
     expect(result.exitCode).toBe(0)
-    // The report propagates up through absorb chain. It's stored under 'child' app name
-    // by child's reportError, and also by grandparent's receiveChildReport.
     const childReports = await readReports(storeDir, 'child')
     expect(childReports).toHaveLength(1)
   })

@@ -5,9 +5,11 @@ import type { InternalConfig } from '../../../packages/sdk/src/config.js'
 import { createReporter } from '../../../packages/sdk/src/index.js'
 import { resetRegistry } from '../../../packages/sdk/src/registry.js'
 import { installMockFetch } from '../helpers/mock-fetch.js'
-import { configs, withStoreDir } from '../helpers/fixtures.js'
 import { createTestPresenter } from '../helpers/test-presenter.js'
 import { createTempStoreDir } from '../helpers/subprocess.js'
+
+// Simulate ESM post-order depths: child (deeper) registers before parent (shallower)
+const DEPTH = { grandparent: 3, parent: 5, child: 7 } as const
 
 describe('E2E: sdk-api/nested', () => {
   let storeDir: string
@@ -29,17 +31,7 @@ describe('E2E: sdk-api/nested', () => {
     const parentPresenter = createTestPresenter({ type: 'cancel' })
     const childPresenter = createTestPresenter({ type: 'cancel' })
 
-    // Parent registered first
-    createReporter({
-      repo: 'test-owner/test-repo',
-      app: { name: 'parent-cli', version: '1.0.0' },
-      childPolicy: 'absorb',
-      presenter: parentPresenter,
-      store: { enabled: true },
-      _storeDir: storeDir,
-    } satisfies InternalConfig)
-
-    // Child registered second (parent is implicit via registry stack)
+    // Post-order: child registers first (deeper), then parent (shallower)
     const child = createReporter({
       repo: 'test-owner/test-repo',
       app: { name: 'child-sdk', version: '0.1.0' },
@@ -47,6 +39,19 @@ describe('E2E: sdk-api/nested', () => {
       presenter: childPresenter,
       store: { enabled: true },
       _storeDir: storeDir,
+      _skipTopLevelCheck: true,
+      _depth: DEPTH.child,
+    } satisfies InternalConfig)
+
+    createReporter({
+      repo: 'test-owner/test-repo',
+      app: { name: 'parent-cli', version: '1.0.0' },
+      childPolicy: 'absorb',
+      presenter: parentPresenter,
+      store: { enabled: true },
+      _storeDir: storeDir,
+      _skipTopLevelCheck: true,
+      _depth: DEPTH.parent,
     } satisfies InternalConfig)
 
     await child.reportAndPrompt(new Error('child error'))
@@ -56,9 +61,18 @@ describe('E2E: sdk-api/nested', () => {
   })
 
   test('2: absorb -- stored in both child and parent store', async () => {
-    // Use separate store dirs for parent and child to verify both save independently
     const parentStoreDir = await createTempStoreDir()
     const parentPresenter = createTestPresenter({ type: 'cancel' })
+
+    const child = createReporter({
+      repo: 'test-owner/test-repo',
+      app: { name: 'child-sdk', version: '0.1.0' },
+      preset: 'sdk',
+      store: { enabled: true },
+      _storeDir: storeDir,
+      _skipTopLevelCheck: true,
+      _depth: DEPTH.child,
+    } satisfies InternalConfig)
 
     createReporter({
       repo: 'test-owner/test-repo',
@@ -67,14 +81,8 @@ describe('E2E: sdk-api/nested', () => {
       presenter: parentPresenter,
       store: { enabled: true },
       _storeDir: parentStoreDir,
-    } satisfies InternalConfig)
-
-    const child = createReporter({
-      repo: 'test-owner/test-repo',
-      app: { name: 'child-sdk', version: '0.1.0' },
-      preset: 'sdk',
-      store: { enabled: true },
-      _storeDir: storeDir,
+      _skipTopLevelCheck: true,
+      _depth: DEPTH.parent,
     } satisfies InternalConfig)
 
     await child.reportAndPrompt(new Error('child error'))
@@ -85,7 +93,6 @@ describe('E2E: sdk-api/nested', () => {
     expect(childReports).toHaveLength(1)
 
     // Parent store also has the report (saved by parent's receiveChildReport)
-    // Note: stored under child's app name since report.app.name = 'child-sdk'
     const parentStore = new Store(parentStoreDir)
     const parentReports = await parentStore.list('child-sdk')
     expect(parentReports.length).toBeGreaterThanOrEqual(1)
@@ -97,6 +104,16 @@ describe('E2E: sdk-api/nested', () => {
     const parentPresenter = createTestPresenter({ type: 'cancel' })
     const childPresenter = createTestPresenter({ type: 'cancel' })
 
+    const child = createReporter({
+      repo: 'test-owner/test-repo',
+      app: { name: 'child-sdk', version: '0.1.0' },
+      presenter: childPresenter,
+      store: { enabled: true },
+      _storeDir: storeDir,
+      _skipTopLevelCheck: true,
+      _depth: DEPTH.child,
+    } satisfies InternalConfig)
+
     createReporter({
       repo: 'test-owner/test-repo',
       app: { name: 'parent-cli', version: '1.0.0' },
@@ -104,14 +121,8 @@ describe('E2E: sdk-api/nested', () => {
       presenter: parentPresenter,
       store: { enabled: true },
       _storeDir: storeDir,
-    } satisfies InternalConfig)
-
-    const child = createReporter({
-      repo: 'test-owner/test-repo',
-      app: { name: 'child-sdk', version: '0.1.0' },
-      presenter: childPresenter,
-      store: { enabled: true },
-      _storeDir: storeDir,
+      _skipTopLevelCheck: true,
+      _depth: DEPTH.parent,
     } satisfies InternalConfig)
 
     await child.reportAndPrompt(new Error('child error'))
@@ -124,15 +135,6 @@ describe('E2E: sdk-api/nested', () => {
     const parentPresenter = createTestPresenter({ type: 'cancel' })
     const childPresenter = createTestPresenter({ type: 'cancel' })
 
-    createReporter({
-      repo: 'test-owner/test-repo',
-      app: { name: 'parent-cli', version: '1.0.0' },
-      childPolicy: 'silent',
-      presenter: parentPresenter,
-      store: { enabled: true },
-      _storeDir: storeDir,
-    } satisfies InternalConfig)
-
     const child = createReporter({
       repo: 'test-owner/test-repo',
       app: { name: 'child-sdk', version: '0.1.0' },
@@ -140,6 +142,19 @@ describe('E2E: sdk-api/nested', () => {
       presenter: childPresenter,
       store: { enabled: true },
       _storeDir: storeDir,
+      _skipTopLevelCheck: true,
+      _depth: DEPTH.child,
+    } satisfies InternalConfig)
+
+    createReporter({
+      repo: 'test-owner/test-repo',
+      app: { name: 'parent-cli', version: '1.0.0' },
+      childPolicy: 'silent',
+      presenter: parentPresenter,
+      store: { enabled: true },
+      _storeDir: storeDir,
+      _skipTopLevelCheck: true,
+      _depth: DEPTH.parent,
     } satisfies InternalConfig)
 
     await child.reportAndPrompt(new Error('silent child error'))
@@ -155,13 +170,15 @@ describe('E2E: sdk-api/nested', () => {
   test('5: 3-level nesting with absorb reaches grandparent', async () => {
     const grandparentPresenter = createTestPresenter({ type: 'cancel' })
 
-    createReporter({
+    // Post-order: child → parent → grandparent
+    const child = createReporter({
       repo: 'test-owner/test-repo',
-      app: { name: 'grandparent', version: '1.0.0' },
-      childPolicy: 'absorb',
-      presenter: grandparentPresenter,
+      app: { name: 'child', version: '1.0.0' },
+      preset: 'sdk',
       store: { enabled: true },
       _storeDir: storeDir,
+      _skipTopLevelCheck: true,
+      _depth: DEPTH.child,
     } satisfies InternalConfig)
 
     createReporter({
@@ -170,14 +187,19 @@ describe('E2E: sdk-api/nested', () => {
       childPolicy: 'absorb',
       store: { enabled: true },
       _storeDir: storeDir,
+      _skipTopLevelCheck: true,
+      _depth: DEPTH.parent,
     } satisfies InternalConfig)
 
-    const child = createReporter({
+    createReporter({
       repo: 'test-owner/test-repo',
-      app: { name: 'child', version: '1.0.0' },
-      preset: 'sdk',
+      app: { name: 'grandparent', version: '1.0.0' },
+      childPolicy: 'absorb',
+      presenter: grandparentPresenter,
       store: { enabled: true },
       _storeDir: storeDir,
+      _skipTopLevelCheck: true,
+      _depth: DEPTH.grandparent,
     } satisfies InternalConfig)
 
     await child.reportAndPrompt(new Error('deep nested error'))
@@ -195,6 +217,8 @@ describe('E2E: sdk-api/nested', () => {
       presenter: childPresenter,
       store: { enabled: true },
       _storeDir: storeDir,
+      _skipTopLevelCheck: true,
+      _depth: DEPTH.child,
     } satisfies InternalConfig)
 
     await child.reportAndPrompt(new Error('standalone error'))

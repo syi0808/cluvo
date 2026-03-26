@@ -16,6 +16,10 @@ const PROJECT_ROOT = join(import.meta.dir, '..', '..', '..')
 /** Absolute path to the SDK source entry, for use in subprocess script imports. */
 export const SDK_IMPORT = join(PROJECT_ROOT, 'packages', 'sdk', 'src', 'index.js')
 
+/** Preload that monkey-patches node:child_process to prevent browser opens in subprocesses. */
+const SUBPROCESS_PRELOAD = join(PROJECT_ROOT, 'test', 'subprocess-preload.ts')
+
+
 export async function runScript(
   code: string,
   options: {
@@ -47,7 +51,7 @@ export async function runScript(
     if (v === undefined) delete envVars[k]
   }
 
-  const proc = Bun.spawn(['bun', 'run', scriptPath], {
+  const proc = Bun.spawn(['bun', 'run', '-r', SUBPROCESS_PRELOAD, scriptPath], {
     cwd: PROJECT_ROOT,
     env: envVars as Record<string, string>,
     stdout: 'pipe',
@@ -102,7 +106,7 @@ export async function runCluvo(
     if (v === undefined) delete envVars[k]
   }
 
-  const proc = Bun.spawn(['bun', 'run', cliBin, ...args], {
+  const proc = Bun.spawn(['bun', 'run', '-r', SUBPROCESS_PRELOAD, cliBin, ...args], {
     cwd: PROJECT_ROOT,
     env: envVars as Record<string, string>,
     stdout: 'pipe',

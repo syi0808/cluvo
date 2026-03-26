@@ -1,11 +1,4 @@
-import { afterEach, beforeEach, describe, expect, mock, test } from 'bun:test'
-
-// Prevent tests from opening a real browser (view action calls openBrowser)
-mock.module('node:child_process', () => ({
-  execFile: (_cmd: string, _args: string[], cb: (err: Error | null) => void) => {
-    cb(null)
-  },
-}))
+import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 
 import { rm } from 'node:fs/promises'
 import { Store } from '../../../packages/core/src/index.js'

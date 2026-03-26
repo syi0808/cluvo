@@ -8,6 +8,9 @@ import type { InternalConfig } from '../src/config.js'
 import { createReporter } from '../src/reporter.js'
 import { resetRegistry } from '../src/registry.js'
 
+// Simulate ESM post-order depths: child (deeper) registers before parent (shallower)
+const DEPTH = { parent: 5, child: 7 } as const
+
 describe('Full pipeline integration', () => {
 	let storeDir: string
 
@@ -28,6 +31,7 @@ describe('Full pipeline integration', () => {
 			interactive: 'never',
 			nonInteractive: 'silent',
 			_storeDir: storeDir,
+			_skipTopLevelCheck: true,
 		} satisfies InternalConfig)
 
 		// Simulate error with sensitive data
@@ -69,6 +73,7 @@ describe('Full pipeline integration', () => {
 			interactive: 'never',
 			nonInteractive: 'silent',
 			_storeDir: storeDir,
+			_skipTopLevelCheck: true,
 		} satisfies InternalConfig)
 
 		let thrown = false
@@ -105,16 +110,7 @@ describe('nested reporters', () => {
 		const parentPrompted = mock(async (ctx: PromptContext) => ({ type: 'cancel' } as PresenterAction))
 		const parentPresenter: PresenterAdapter = { prompt: parentPrompted }
 
-		const parent = createReporter({
-			repo: 'owner/repo',
-			app: { name: 'cli-app', version: '1.0.0' },
-			childPolicy: 'absorb',
-			presenter: parentPresenter,
-			store: { enabled: true },
-			dedupe: { enabled: false },
-			_storeDir: storeDir,
-		} satisfies InternalConfig)
-
+		// Post-order: child registers first (deeper), then parent (shallower)
 		const child = createReporter({
 			repo: 'owner/repo',
 			app: { name: 'sdk-lib', version: '0.1.0' },
@@ -122,6 +118,20 @@ describe('nested reporters', () => {
 			store: { enabled: true },
 			dedupe: { enabled: false },
 			_storeDir: storeDir,
+			_skipTopLevelCheck: true,
+			_depth: DEPTH.child,
+		} satisfies InternalConfig)
+
+		createReporter({
+			repo: 'owner/repo',
+			app: { name: 'cli-app', version: '1.0.0' },
+			childPolicy: 'absorb',
+			presenter: parentPresenter,
+			store: { enabled: true },
+			dedupe: { enabled: false },
+			_storeDir: storeDir,
+			_skipTopLevelCheck: true,
+			_depth: DEPTH.parent,
 		} satisfies InternalConfig)
 
 		await child.reportAndPrompt(new Error('child error'))
@@ -134,19 +144,23 @@ describe('nested reporters', () => {
 		const childPrompted = mock(async (ctx: PromptContext) => ({ type: 'cancel' } as PresenterAction))
 		const childPresenter: PresenterAdapter = { prompt: childPrompted }
 
-		const parent = createReporter({
-			repo: 'owner/repo',
-			app: { name: 'cli-app', version: '1.0.0' },
-			childPolicy: 'passthrough',
-			store: { enabled: false },
-		})
-
 		const child = createReporter({
 			repo: 'owner/repo',
 			app: { name: 'sdk-lib', version: '0.1.0' },
 			presenter: childPresenter,
 			store: { enabled: false },
 			dedupe: { enabled: false },
+			_skipTopLevelCheck: true,
+			_depth: DEPTH.child,
+		})
+
+		createReporter({
+			repo: 'owner/repo',
+			app: { name: 'cli-app', version: '1.0.0' },
+			childPolicy: 'passthrough',
+			store: { enabled: false },
+			_skipTopLevelCheck: true,
+			_depth: DEPTH.parent,
 		})
 
 		await child.reportAndPrompt(new Error('child error'))
@@ -155,13 +169,6 @@ describe('nested reporters', () => {
 	})
 
 	test('silent: child stores only, no prompt', async () => {
-		const parent = createReporter({
-			repo: 'owner/repo',
-			app: { name: 'cli-app', version: '1.0.0' },
-			childPolicy: 'silent',
-			store: { enabled: false },
-		})
-
 		const child = createReporter({
 			repo: 'owner/repo',
 			app: { name: 'sdk-lib', version: '0.1.0' },
@@ -169,7 +176,18 @@ describe('nested reporters', () => {
 			store: { enabled: true },
 			dedupe: { enabled: false },
 			_storeDir: storeDir,
+			_skipTopLevelCheck: true,
+			_depth: DEPTH.child,
 		} satisfies InternalConfig)
+
+		createReporter({
+			repo: 'owner/repo',
+			app: { name: 'cli-app', version: '1.0.0' },
+			childPolicy: 'silent',
+			store: { enabled: false },
+			_skipTopLevelCheck: true,
+			_depth: DEPTH.parent,
+		})
 
 		await child.reportAndPrompt(new Error('silent error'))
 
@@ -180,7 +198,18 @@ describe('nested reporters', () => {
 	})
 
 	test('child always stores to own store under absorb', async () => {
-		const parent = createReporter({
+		const child = createReporter({
+			repo: 'owner/repo',
+			app: { name: 'sdk-lib', version: '0.1.0' },
+			preset: 'sdk',
+			store: { enabled: true },
+			dedupe: { enabled: false },
+			_storeDir: storeDir,
+			_skipTopLevelCheck: true,
+			_depth: DEPTH.child,
+		} satisfies InternalConfig)
+
+		createReporter({
 			repo: 'owner/repo',
 			app: { name: 'cli-app', version: '1.0.0' },
 			childPolicy: 'absorb',
@@ -189,15 +218,8 @@ describe('nested reporters', () => {
 			store: { enabled: true },
 			dedupe: { enabled: false },
 			_storeDir: storeDir,
-		} satisfies InternalConfig)
-
-		const child = createReporter({
-			repo: 'owner/repo',
-			app: { name: 'sdk-lib', version: '0.1.0' },
-			preset: 'sdk',
-			store: { enabled: true },
-			dedupe: { enabled: false },
-			_storeDir: storeDir,
+			_skipTopLevelCheck: true,
+			_depth: DEPTH.parent,
 		} satisfies InternalConfig)
 
 		await child.reportAndPrompt(new Error('stored both'))
@@ -214,6 +236,7 @@ describe('nested reporters', () => {
 			repo: 'owner/repo',
 			app: { name: 'edge-test', version: '1.0.0' },
 			store: { enabled: false },
+			_skipTopLevelCheck: true,
 		})
 		const report = await reporter.reportError(null)
 		expect(report.error.message).toBe('null')
@@ -224,6 +247,7 @@ describe('nested reporters', () => {
 			repo: 'owner/repo',
 			app: { name: 'edge-test', version: '1.0.0' },
 			store: { enabled: false },
+			_skipTopLevelCheck: true,
 		})
 		const report = await reporter.reportError(undefined)
 		expect(report.error.message).toBe('undefined')
@@ -234,6 +258,7 @@ describe('nested reporters', () => {
 			repo: 'owner/repo',
 			app: { name: 'edge-test', version: '1.0.0' },
 			store: { enabled: false },
+			_skipTopLevelCheck: true,
 		})
 		const report = await reporter.reportError('string error')
 		expect(report.error.message).toBe('string error')
@@ -249,6 +274,7 @@ describe('nested reporters', () => {
 			presenter: throwingPresenter,
 			store: { enabled: false },
 			dedupe: { enabled: false },
+			_skipTopLevelCheck: true,
 		})
 		// Should NOT throw
 		await reporter.reportAndPrompt(new Error('test'))
@@ -265,6 +291,7 @@ describe('nested reporters', () => {
 			interactive: 'never',
 			nonInteractive: 'silent',
 			_storeDir: storeDir,
+			_skipTopLevelCheck: true,
 		} satisfies InternalConfig)
 
 		await reporter.reportError(new Error('pending only'))
@@ -286,6 +313,7 @@ describe('nested reporters', () => {
 			store: { enabled: true },
 			dedupe: { enabled: false },
 			_storeDir: storeDir,
+			_skipTopLevelCheck: true,
 		} satisfies InternalConfig)
 
 		// SDK preset has presenter=null, so reportAndPrompt should just collect
@@ -307,6 +335,7 @@ describe('nested reporters', () => {
 			store: { enabled: true },
 			dedupe: { enabled: false },
 			_storeDir: storeDir,
+			_skipTopLevelCheck: true,
 		} satisfies InternalConfig)
 
 		const originalArgv = process.argv
@@ -337,6 +366,7 @@ describe('nested reporters', () => {
 			store: { enabled: true },
 			dedupe: { enabled: false },
 			_storeDir: storeDir,
+			_skipTopLevelCheck: true,
 		} satisfies InternalConfig)
 
 		const error = new Error('once only')

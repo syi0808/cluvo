@@ -3,6 +3,7 @@
 
 export interface RegisteredReporter {
 	id: string
+	depth: number
 	reporter: { receiveChildReport(report: import('@cluvo/core').ErrorReport): Promise<void> }
 	childPolicy: 'absorb' | 'passthrough' | 'silent'
 }
@@ -10,12 +11,38 @@ export interface RegisteredReporter {
 interface ReporterRegistry {
 	stack: RegisteredReporter[]
 	parentMap: Map<string, string> // childId -> parentId
-	register(entry: RegisteredReporter, parentId?: string): void
+	register(entry: RegisteredReporter): void
 	unregister(id: string): void
 	getParent(entry: RegisteredReporter): RegisteredReporter | null
 }
 
 const REGISTRY_KEY = Symbol.for('cluvo.registry')
+
+/**
+ * Reconstruct parent-child hierarchy from post-order registration + stack depth.
+ *
+ * ESM modules execute depth-first post-order: deepest child first, root last.
+ * Combined with call stack depth (deeper import chain = higher frame count),
+ * we can rebuild the full tree without explicit parent declarations.
+ */
+function resolveHierarchy(
+	stack: RegisteredReporter[],
+	parentMap: Map<string, string>,
+): void {
+	parentMap.clear()
+	const pending: RegisteredReporter[] = []
+
+	for (const reporter of stack) {
+		// Reporters with deeper stack depth registered before this one
+		// are children of this reporter (post-order property)
+		while (pending.length > 0 && pending[pending.length - 1].depth > reporter.depth) {
+			const child = pending.pop()!
+			parentMap.set(child.id, reporter.id)
+		}
+		pending.push(reporter)
+	}
+	// Remaining entries in pending have no parent (roots or independent reporters)
+}
 
 function createRegistry(): ReporterRegistry {
 	const stack: RegisteredReporter[] = []
@@ -25,24 +52,15 @@ function createRegistry(): ReporterRegistry {
 		stack,
 		parentMap,
 
-		register(entry: RegisteredReporter, parentId?: string) {
+		register(entry: RegisteredReporter) {
 			stack.push(entry)
-			if (parentId) {
-				parentMap.set(entry.id, parentId)
-			} else if (stack.length > 1) {
-				// Implicit: parent is the previously registered reporter
-				parentMap.set(entry.id, stack[stack.length - 2].id)
-			}
+			resolveHierarchy(stack, parentMap)
 		},
 
 		unregister(id: string) {
 			const idx = stack.findIndex((e) => e.id === id)
 			if (idx !== -1) stack.splice(idx, 1)
-			parentMap.delete(id)
-			// Clean up children that pointed to this parent
-			for (const [childId, pid] of parentMap) {
-				if (pid === id) parentMap.delete(childId)
-			}
+			resolveHierarchy(stack, parentMap)
 		},
 
 		getParent(entry: RegisteredReporter): RegisteredReporter | null {

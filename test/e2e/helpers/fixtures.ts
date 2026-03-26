@@ -62,7 +62,7 @@ export const configs = {
 } as const satisfies Record<string, ConfigFixture>
 
 export function withStoreDir(config: ConfigFixture, storeDir: string): InternalConfig {
-  return { ...config, _storeDir: storeDir } as InternalConfig
+  return { ...config, _storeDir: storeDir, _skipTopLevelCheck: true } as InternalConfig
 }
 
 export function makeReport(
