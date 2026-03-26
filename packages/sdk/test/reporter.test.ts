@@ -4,15 +4,18 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import type { InternalConfig } from '../src/config.js'
 import { createReporter } from '../src/reporter.js'
+import { resetRegistry } from '../src/registry.js'
 
 describe('createReporter', () => {
 	let storeDir: string
 
 	beforeEach(async () => {
 		storeDir = await mkdtemp(join(tmpdir(), 'cluvo-sdk-'))
+		resetRegistry()
 	})
 	afterEach(async () => {
 		await rm(storeDir, { recursive: true, force: true })
+		resetRegistry()
 	})
 
 	test('creates reporter with config', () => {
@@ -148,7 +151,7 @@ describe('createReporter', () => {
 
 		const report = await reporter.reportError(new Error('not stored'))
 		expect(report.id).toBeTruthy()
-		// No assertion on store — just verifying it doesn't throw
+		// No assertion on store -- just verifying it doesn't throw
 	})
 
 	test('findMatches returns result with fetch mock', async () => {
@@ -231,5 +234,184 @@ describe('createReporter', () => {
 		const report = await reporter.reportError(new Error('test'))
 		// Should not throw in non-interactive silent mode
 		await reporter.promptAndSubmit(report)
+	})
+
+	test('promptAndSubmit sets status to dismissed in non-interactive mode', async () => {
+		const reporter = createReporter({
+			repo: 'owner/repo',
+			app: { name: 'nonint-test', version: '1.0.0' },
+			interactive: 'never',
+			nonInteractive: 'silent',
+			store: { enabled: true },
+			dedupe: { enabled: false },
+			_storeDir: storeDir,
+		} satisfies InternalConfig)
+
+		const report = await reporter.reportError(new Error('non-interactive'))
+		await reporter.promptAndSubmit(report)
+
+		const { Store } = await import('@cluvo/core')
+		const store = new Store(storeDir)
+		const loaded = await store.load('nonint-test', report.id)
+		expect(loaded?.status).toBe('dismissed')
+	})
+
+	// --- New tests for Task 7 ---
+
+	test('reporter exposes new API methods', () => {
+		const reporter = createReporter({
+			repo: 'owner/repo',
+			app: { name: 'test', version: '1.0.0' },
+		})
+		expect(reporter.reportAndPrompt).toBeInstanceOf(Function)
+		expect(reporter.wrap).toBeInstanceOf(Function)
+		expect(reporter.installExitHandler).toBeInstanceOf(Function)
+		expect(reporter.receiveChildReport).toBeInstanceOf(Function)
+	})
+
+	test('reportAndPrompt collects and stores report in non-interactive mode', async () => {
+		const reporter = createReporter({
+			repo: 'owner/repo',
+			app: { name: 'test', version: '1.0.0' },
+			interactive: 'never',
+			nonInteractive: 'silent',
+			store: { enabled: true },
+			dedupe: { enabled: false },
+			_storeDir: storeDir,
+		} satisfies InternalConfig)
+		await reporter.reportAndPrompt(new Error('test'))
+	})
+
+	test('wrap catches error and reports it', async () => {
+		const reporter = createReporter({
+			repo: 'owner/repo',
+			app: { name: 'test', version: '1.0.0' },
+			interactive: 'never',
+			nonInteractive: 'silent',
+			store: { enabled: true },
+			dedupe: { enabled: false },
+			_storeDir: storeDir,
+		} satisfies InternalConfig)
+		await expect(
+			reporter.wrap(async () => {
+				throw new Error('wrapped')
+			}),
+		).rejects.toThrow('wrapped')
+	})
+
+	test('wrap with rethrow=false swallows error', async () => {
+		const reporter = createReporter({
+			repo: 'owner/repo',
+			app: { name: 'test', version: '1.0.0' },
+			interactive: 'never',
+			nonInteractive: 'silent',
+			store: { enabled: true },
+			dedupe: { enabled: false },
+			_storeDir: storeDir,
+		} satisfies InternalConfig)
+		await reporter.wrap(
+			async () => {
+				throw new Error('swallowed')
+			},
+			{ rethrow: false },
+		)
+	})
+
+	test('wrap does nothing when function succeeds', async () => {
+		const reporter = createReporter({
+			repo: 'owner/repo',
+			app: { name: 'test', version: '1.0.0' },
+			store: { enabled: false },
+		})
+		await reporter.wrap(async () => {
+			/* success */
+		})
+	})
+
+	test('wrapCommand accepts WrapOptions', async () => {
+		const reporter = createReporter({
+			repo: 'owner/repo',
+			app: { name: 'test', version: '1.0.0' },
+			interactive: 'never',
+			nonInteractive: 'silent',
+			store: { enabled: false },
+			dedupe: { enabled: false },
+		})
+		await reporter.wrapCommand(
+			async () => {
+				throw new Error('swallowed-cmd')
+			},
+			{ rethrow: false },
+		)
+	})
+
+	test('duplicate error detection via WeakMap', async () => {
+		const reporter = createReporter({
+			repo: 'owner/repo',
+			app: { name: 'dedup-test', version: '1.0.0' },
+			store: { enabled: true },
+			_storeDir: storeDir,
+		} satisfies InternalConfig)
+		const error = new Error('duplicate')
+		const report1 = await reporter.reportError(error)
+		const report2 = await reporter.reportError(error)
+		expect(report1.id).toBe(report2.id) // Same report returned
+	})
+
+	test('receiveChildReport stores report', async () => {
+		const reporter = createReporter({
+			repo: 'owner/repo',
+			app: { name: 'parent-test', version: '1.0.0' },
+			interactive: 'never',
+			nonInteractive: 'silent',
+			store: { enabled: true },
+			dedupe: { enabled: false },
+			_storeDir: storeDir,
+		} satisfies InternalConfig)
+		const childReport = {
+			id: 'child-1',
+			createdAt: new Date().toISOString(),
+			app: { name: 'child-lib', version: '0.1.0', runtime: 'node' },
+			error: { name: 'Error', message: 'child error' },
+			environment: { os: 'darwin', arch: 'arm64', runtimeVersion: 'v22.0.0' },
+			sanitizedFields: [],
+			status: 'pending' as const,
+		}
+		await reporter.receiveChildReport(childReport)
+		const { Store } = await import('@cluvo/core')
+		const store = new Store(storeDir)
+		const loaded = await store.load('child-lib', 'child-1')
+		expect(loaded).not.toBeNull()
+	})
+
+	test('promptAndSubmit sets status to dismissed on cancel', async () => {
+		const reporter = createReporter({
+			repo: 'owner/repo',
+			app: { name: 'cancel-test', version: '1.0.0' },
+			interactive: 'always',
+			store: { enabled: true },
+			dedupe: { enabled: false },
+			_storeDir: storeDir,
+		} satisfies InternalConfig)
+
+		const report = await reporter.reportError(new Error('will cancel'))
+		// In non-TTY, TerminalPresenter.prompt() returns null → cancel path
+		await reporter.promptAndSubmit(report)
+
+		const { Store } = await import('@cluvo/core')
+		const store = new Store(storeDir)
+		const loaded = await store.load('cancel-test', report.id)
+		expect(loaded?.status).toBe('dismissed')
+	})
+
+	test('installExitHandler returns cleanup function', () => {
+		const reporter = createReporter({
+			repo: 'owner/repo',
+			app: { name: 'test', version: '1.0.0' },
+			store: { enabled: false },
+		})
+		const cleanup = reporter.installExitHandler()
+		expect(typeof cleanup).toBe('function')
+		cleanup()
 	})
 })

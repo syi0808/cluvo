@@ -1,6 +1,9 @@
-import { afterEach, beforeEach, describe, expect, mock, test } from 'bun:test'
-import type { PresenterAction } from '../src/presenter/interactive.js'
+import { afterEach, beforeAll, beforeEach, describe, expect, mock, test } from 'bun:test'
+import { setColorEnabled } from '../src/presenter/style.js'
+import type { PresenterAction } from '../src/types.js'
 import type { DraftPayload, ErrorReport, ReporterConfig } from '../src/types.js'
+
+beforeAll(() => setColorEnabled(false))
 
 const report: ErrorReport = {
 	id: 'r1',

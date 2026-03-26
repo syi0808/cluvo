@@ -1,7 +1,10 @@
-import { describe, expect, test } from 'bun:test'
+import { beforeAll, describe, expect, test } from 'bun:test'
 import { handleNonInteractive } from '../src/presenter/noninteractive.js'
 import { renderDetails, renderSummary } from '../src/presenter/render.js'
+import { setColorEnabled } from '../src/presenter/style.js'
 import type { DraftPayload, ErrorReport, ExistingIssue } from '../src/types.js'
+
+beforeAll(() => setColorEnabled(false))
 
 function makeReport(overrides: Partial<ErrorReport> = {}): ErrorReport {
 	return {

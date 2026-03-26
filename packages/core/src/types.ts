@@ -15,7 +15,7 @@ export interface ErrorReport {
 		activeHandles?: number
 		uptime: number
 	} | null
-	status: 'pending' | 'submitted' | 'dismissed'
+	status: 'pending' | 'prompted' | 'submitted' | 'dismissed'
 	submittedAt?: string
 	issueUrl?: string
 }
@@ -83,6 +83,9 @@ export type NonInteractiveMode = 'save' | 'silent' | 'log'
 export interface ReporterConfig {
 	repo: string
 	app: { name: string; version: string; gitSha?: string }
+	preset?: Preset
+	presenter?: PresenterAdapter | null
+	childPolicy?: ChildPolicy
 	mode?: ReporterMode
 	interactive?: InteractiveMode
 	nonInteractive?: NonInteractiveMode
@@ -113,6 +116,7 @@ export interface ReporterConfig {
 	prompt?: {
 		message?: string
 		detailMessage?: string
+		spacing?: number
 	}
 	branding?: {
 		showName?: boolean
@@ -125,6 +129,44 @@ export interface ErrorContext {
 	argv?: string[]
 	metadata?: Record<string, unknown>
 }
+
+// === Presenter Adapter ===
+
+export interface PresenterAdapter {
+	prompt(context: PromptContext): Promise<PresenterAction | null>
+}
+
+export interface PromptContext {
+	report: ErrorReport
+	draft: DraftPayload
+	authAvailable: boolean
+	promptMessage?: string
+	promptSpacing?: number
+	branding?: { showName?: boolean }
+}
+
+export type PresenterAction =
+	| { type: 'open' }
+	| { type: 'gh' }
+	| { type: 'view'; issue: ExistingIssue }
+	| { type: 'react'; issue: ExistingIssue }
+	| { type: 'save' }
+	| { type: 'cancel' }
+
+// === Options ===
+
+export interface WrapOptions {
+	rethrow?: boolean
+}
+
+export interface ExitHandlerOptions {
+	interceptProcessExit?: boolean
+	timeout?: number
+}
+
+export type Preset = 'cli' | 'sdk'
+
+export type ChildPolicy = 'absorb' | 'passthrough' | 'silent'
 
 export function generateReportId(): string {
 	return `${Date.now()}-${crypto.randomUUID().slice(0, 8)}`

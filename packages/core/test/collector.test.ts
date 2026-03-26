@@ -64,6 +64,17 @@ describe('collectEnvironment', () => {
 		const env = collectEnvironment()
 		expect(typeof env.ci).toBe('boolean')
 	})
+
+	test('uses Bun.version when running under Bun', () => {
+		const env = collectEnvironment()
+		if (typeof globalThis.Bun !== 'undefined') {
+			expect(env.runtimeVersion).toBe(Bun.version)
+			expect(env.runtimeVersion).not.toMatch(/^v/)
+		} else {
+			expect(env.runtimeVersion).toBe(process.version)
+			expect(env.runtimeVersion).toMatch(/^v/)
+		}
+	})
 })
 
 describe('collectApp', () => {

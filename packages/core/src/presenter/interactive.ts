@@ -1,10 +1,6 @@
-import type { DraftPayload, ErrorReport, ExistingIssue, ReporterConfig } from '../types.js'
+import type { DraftPayload, ErrorReport, ExistingIssue, PresenterAction, ReporterConfig } from '../types.js'
 import { renderDetails, renderPromptMessage, renderSummary } from './render.js'
-
-export interface PresenterAction {
-	type: 'view' | 'react' | 'open' | 'gh' | 'save' | 'cancel'
-	issue?: ExistingIssue
-}
+import { boldCyan } from './style.js'
 
 export async function promptUser(
 	report: ErrorReport,
@@ -32,24 +28,28 @@ async function promptAction(
 
 	const options: string[] = []
 	if (hasMatches) {
-		options.push('[v] View similar issue')
-		if (authAvailable) options.push('[r] React to issue')
+		options.push(`${boldCyan('[v]')} View similar issue`)
+		if (authAvailable) options.push(`${boldCyan('[r]')} React to issue`)
 	}
-	options.push('[o] Open in browser')
-	options.push('[g] Create via gh')
-	options.push('[s] Save as markdown')
-	options.push('[d] Details')
-	options.push('[c] Cancel')
+	options.push(`${boldCyan('[o]')} Open in browser`)
+	options.push(`${boldCyan('[g]')} Create via gh`)
+	options.push(`${boldCyan('[s]')} Save as markdown`)
+	options.push(`${boldCyan('[d]')} Details`)
+	options.push(`${boldCyan('[c]')} Cancel`)
 
 	process.stdout.write(`${options.join('  ')}\n`)
 
 	const key = await readKey()
 
 	switch (key) {
-		case 'v':
-			return { type: 'view', issue: report.matches?.[0] }
-		case 'r':
-			return { type: 'react', issue: report.matches?.[0] }
+		case 'v': {
+			const issue = report.matches?.[0]
+			return issue ? { type: 'view', issue } : await promptAction(report, draft, authAvailable)
+		}
+		case 'r': {
+			const issue = report.matches?.[0]
+			return issue ? { type: 'react', issue } : await promptAction(report, draft, authAvailable)
+		}
 		case 'o':
 			return { type: 'open' }
 		case 'g':

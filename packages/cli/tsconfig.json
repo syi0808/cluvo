@@ -1,6 +1,7 @@
 {
 	"extends": "../../tsconfig.json",
 	"compilerOptions": { "composite": true, "outDir": "dist", "rootDir": "src" },
-	"include": ["src"],
+	"include": ["src/**/*.ts"],
+	"exclude": ["tests", "dist", "node_modules"],
 	"references": [{ "path": "../core" }, { "path": "../sdk" }]
 }

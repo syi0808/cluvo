@@ -1,7 +1,7 @@
 {
 	"name": "cluvo-plugin",
 	"description": "Claude Code skills for integrating @cluvo/sdk bug reporting into any CLI/SDK project — setup, error handler discovery, and configuration customization.",
-	"version": "0.1.0",
+	"version": "0.0.1",
 	"author": {
 		"name": "cluvo"
 	},

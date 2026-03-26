@@ -32,6 +32,9 @@ Present the available config areas:
 
 | Area | What it controls |
 |------|-----------------|
+| **Preset** | Environment preset: `'cli'` or `'sdk'` (sets defaults for interactive, argv, sections, presenter) |
+| **Presenter** | Custom presenter adapter for TUI apps, or `null` to disable interactive prompts |
+| **Child Policy** | Nested reporter behavior: `'absorb'`, `'passthrough'`, or `'silent'` |
 | **Sanitize** | Custom regex rules to mask project-specific secrets |
 | **Issue** | Labels, title format, markdown sections, issue template |
 | **Dedupe** | Duplicate issue search on/off, include GitHub Discussions |
@@ -47,6 +50,51 @@ Ask the user which area(s) they want to configure.
 ### 3. Apply configuration
 
 Modify the `createReporter` config object based on user choices. Below are patterns for each area.
+
+#### Preset
+
+```typescript
+preset: 'cli'  // 'cli' | 'sdk'
+```
+
+| Preset | Interactive | Argv | Sections | Presenter |
+|--------|------------|------|----------|-----------|
+| `'cli'` (default) | `'auto'` | Yes | Includes `command` | `TerminalPresenter` |
+| `'sdk'` | `'never'` | No | Excludes `command` | `null` |
+
+Preset values serve as defaults — any explicit config overrides them.
+
+#### Presenter — Custom Adapter
+
+```typescript
+import type { PresenterAdapter, PromptContext, PresenterAction } from '@cluvo/core'
+
+class MyPresenter implements PresenterAdapter {
+  async prompt(context: PromptContext): Promise<PresenterAction | null> {
+    // Show custom UI, return user action
+    return { type: 'cancel' }
+  }
+}
+
+const cluvo = createReporter({
+  // ...
+  presenter: new MyPresenter(),
+})
+```
+
+Set `presenter: null` to disable interactive prompts entirely (non-interactive fallback only).
+
+#### Child Policy — Nested Reporters
+
+```typescript
+childPolicy: 'absorb'  // 'absorb' | 'passthrough' | 'silent'
+```
+
+| Policy | Behavior |
+|--------|----------|
+| `absorb` | Child forwards report to parent's presenter. Child still stores locally. |
+| `passthrough` (default) | Child handles its own prompt normally. |
+| `silent` | Child stores only, no prompt. |
 
 #### Sanitize — Custom Rules
 

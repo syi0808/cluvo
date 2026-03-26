@@ -50,20 +50,24 @@ Present findings to the user as a table:
 
 | Location | Category | Recommendation |
 |----------|----------|---------------|
-| `src/commands/deploy.ts:45` | try/catch | `reportError` + `promptAndSubmit` |
+| `src/commands/deploy.ts:45` | try/catch | `reportAndPrompt` (or `reportError` + `promptAndSubmit`) |
 | (global) | No global handler | `installGlobalHandlers()` |
+| `src/services/api.ts:20` | try/catch (wrappable) | `wrap` with `rethrow: false` |
 | `src/api/client.ts:89` | try/catch (pipeline) | Low-level API |
+| (process exit) | No exit handler | `installExitHandler()` |
 
 **Decision rules:**
-- **try/catch in command handlers or top-level operations** → Manual level (`reportError` + `promptAndSubmit`)
+- **try/catch in command handlers or top-level operations** → `reportAndPrompt` (simplest) or manual `reportError` + `promptAndSubmit`
+- **try/catch wrapping an entire async function** → `wrap(fn)` or `wrap(fn, { rethrow: false })`
 - **No global error handlers exist** → Recommend `installGlobalHandlers()` at app startup
+- **reportError used without promptAndSubmit** → Add `installExitHandler()` to catch unreported errors at exit
 - **try/catch where the caller needs fine-grained control** (e.g., retry logic, custom formatting, conditional reporting) → Low-level pipeline
 
 ### 4. Apply with user confirmation
 
 For each recommended location, show the code change and ask the user to confirm before applying.
 
-Read [references/error-handling-patterns.md](references/error-handling-patterns.md) for the three integration patterns: manual level (`reportError` + `promptAndSubmit`), global handlers (`installGlobalHandlers`), and low-level pipeline.
+Read [references/error-handling-patterns.md](references/error-handling-patterns.md) for integration patterns: `reportAndPrompt`, `wrap`, manual level (`reportError` + `promptAndSubmit`), global handlers (`installGlobalHandlers`), exit handler (`installExitHandler`), nested reporters, and low-level pipeline.
 
 ### 5. Completion message
 
@@ -75,4 +79,4 @@ Read [references/error-handling-patterns.md](references/error-handling-patterns.
 
 ## API Reference
 
-Read [references/sdk-api.md](references/sdk-api.md) for the full Reporter API including `reportError`, `promptAndSubmit`, `installGlobalHandlers`, and low-level methods.
+Read [references/sdk-api.md](references/sdk-api.md) for the full Reporter API including `reportAndPrompt`, `wrap`, `reportError`, `promptAndSubmit`, `installGlobalHandlers`, `installExitHandler`, and low-level methods.

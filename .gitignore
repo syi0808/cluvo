@@ -4,3 +4,4 @@ dist/
 .DS_Store
 .pubm/*
 !.pubm/changesets/
+.worktrees/

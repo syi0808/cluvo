@@ -483,25 +483,74 @@ match(report, config)
 
 ## Presenter System
 
-Handles user interaction with two distinct modes based on TTY detection.
+Handles user interaction via the Adapter pattern. The `PresenterAdapter` interface decouples the prompt UI from the pipeline, allowing CLI, TUI, and library environments to use different implementations.
 
-### Interactive Mode (TTY)
+### Adapter Pattern
 
 ```
-promptUser(report, draft, config, authAvailable)
+PresenterAdapter
+  └─ prompt(context: PromptContext): Promise<PresenterAction | null>
+```
+
+`PromptContext` carries everything needed to render a prompt:
+
+```
+PromptContext
+  ├─ report: ErrorReport
+  ├─ draft: DraftPayload
+  ├─ authAvailable: boolean
+  ├─ promptMessage?: string
+  └─ branding?: BrandingConfig
+```
+
+`PresenterAction` is a discriminated union:
+
+```
+PresenterAction
+  ├─ { type: 'open' }    — Open in browser
+  ├─ { type: 'gh' }      — Submit via gh CLI
+  ├─ { type: 'view' }    — View full report details
+  ├─ { type: 'react' }   — React to existing issue
+  ├─ { type: 'save' }    — Save for later
+  └─ { type: 'cancel' }  — No action
+```
+
+### Built-in: TerminalPresenter
+
+The default presenter used by the `cli` preset. Uses raw-mode TTY input with a TUI fallback for non-raw-mode terminals.
+
+```
+TerminalPresenter.prompt(context)
   ├─ renderSummary(report)     — One-line error overview
   ├─ renderPromptMessage()     — Available action keys
   │
   └─ Raw-mode single-key input:
-     ├─ Y/Enter  → 'open' (submit via preferred method)
-     ├─ v        → 'view' (show full report details)
-     ├─ r        → 'react' (react to existing issue)
-     ├─ g        → 'gh' (submit via gh CLI)
-     ├─ s        → 'save' (save for later)
+     ├─ Y/Enter  → 'open'
+     ├─ v        → 'view'
+     ├─ r        → 'react'
+     ├─ g        → 'gh'
+     ├─ s        → 'save'
      └─ n/q/Esc  → 'cancel'
 ```
 
+### Custom Presenter
+
+Any object implementing `PresenterAdapter` can be passed as `presenter`. Useful for TUI frameworks:
+
+```typescript
+class MyTuiPresenter implements PresenterAdapter {
+  async prompt(context: PromptContext): Promise<PresenterAction | null> {
+    // Pause TUI, show error dialog, resume TUI
+    return { type: 'cancel' }
+  }
+}
+```
+
+Pass `presenter: null` to disable prompting entirely (errors are stored without user interaction).
+
 ### Non-Interactive Mode (Pipe/CI)
+
+When `presenter` is null or `interactive: 'never'` is set:
 
 ```
 handleNonInteractive(report, mode, filePath?)
@@ -593,6 +642,19 @@ getGithubToken()
 
 ## SDK Package Architecture
 
+### Module Overview
+
+```
+packages/sdk/src/
+├── index.ts              Reporter interface exports
+├── reporter.ts           createReporter() implementation
+├── config.ts             resolveConfig() with defaults
+├── presets.ts            CLI and SDK preset definitions
+├── registry.ts           Global reporter registry (Symbol.for cross-package)
+├── exit-handler.ts       beforeExit handler + optional process.exit interception
+└── terminal-presenter.ts Built-in TerminalPresenter with TUI fallback
+```
+
 ### Reporter Interface
 
 The SDK exposes a single `createReporter()` factory that returns a `Reporter` object:
@@ -602,8 +664,12 @@ interface Reporter {
   // High-level API (most users)
   reportError(error, context?): Promise<ErrorReport>
   promptAndSubmit(report): Promise<void>
-  installGlobalHandlers(): () => void      // Returns uninstall function
-  wrapCommand(fn): Promise<void>           // Try/catch with auto-report
+  reportAndPrompt(error, context?): Promise<void>   // combines reportError + promptAndSubmit
+  wrap(fn, opts?): Promise<void>                    // try/catch wrapper
+  wrapCommand(fn): Promise<void>                    // like wrap, captures process.argv
+  installGlobalHandlers(): () => void               // Returns uninstall function
+  installExitHandler(opts?): void                   // Catches errors at process exit
+  receiveChildReport(report): Promise<void>         // Accepts forwarded child reports
 
   // Low-level API (advanced users)
   buildReport(error, context?): ErrorReport
@@ -614,18 +680,71 @@ interface Reporter {
 }
 ```
 
+### Preset System
+
+Presets apply environment-specific defaults before `resolveConfig()` merges user config:
+
+```
+presets.ts
+  ├─ CLI_PRESET
+  │   ├─ interactive:    'auto'
+  │   ├─ collect.argv:   true
+  │   └─ presenter:      new TerminalPresenter()
+  │
+  └─ SDK_PRESET
+      ├─ interactive:    'never'
+      ├─ collect.argv:   false
+      └─ presenter:      null
+```
+
+Preset defaults are overridden by any explicit value in the user-provided config.
+
+### Global Reporter Registry
+
+`registry.ts` maintains a process-wide map of reporters using `Symbol.for('cluvo.registry')` as the key on `globalThis`. This allows cross-package access without singleton imports:
+
+```
+registry
+  ├─ register(reporter)    — Add reporter to registry
+  ├─ unregister(reporter)  — Remove reporter
+  ├─ getParent(reporter)   — Find nearest reporter with a presenter
+  └─ getAll()              — All registered reporters
+```
+
+When a library reporter (no presenter) encounters an error, it searches the registry for a parent reporter and calls `receiveChildReport()` on it. The parent's `childPolicy` controls what happens next:
+
+```
+childPolicy
+  ├─ 'absorb'      — Parent prompts the user using its own presenter
+  ├─ 'passthrough' — Parent runs the full pipeline (report + prompt)
+  └─ 'silent'      — Parent stores the report silently
+```
+
+### Exit Handler
+
+`installExitHandler(opts?)` registers a `beforeExit` listener to catch unreported errors before the process terminates:
+
+```
+ExitHandlerOptions
+  ├─ interceptProcessExit?: boolean  — Wrap process.exit() to run handler first
+  └─ timeout?: number                — Max ms to wait for async handler (default: 5000)
+```
+
 ### Config Resolution
 
-`resolveConfig()` applies defaults to the user-provided `ReporterConfig`:
+`resolveConfig()` applies preset then user config:
 
 ```
 resolveConfig(config)
+  ├─ Apply preset defaults (cli or sdk)
   ├─ mode:           config.mode           ?? 'browser'
-  ├─ interactive:    config.interactive    ?? 'auto'
+  ├─ interactive:    config.interactive    ?? preset.interactive
   ├─ nonInteractive: config.nonInteractive ?? 'save'
+  ├─ presenter:      config.presenter      ?? preset.presenter
+  ├─ childPolicy:    config.childPolicy    ?? undefined
   ├─ storeDir:       config._storeDir      ?? ~/.cluvo
   ├─ collect:
-  │   ├─ argv:              true
+  │   ├─ argv:              preset.collect.argv
   │   ├─ diagnosticReport:  false
   │   ├─ configSummary:     false
   │   └─ envinfo:           true
@@ -708,7 +827,32 @@ bin.ts
 
 Cluvo involves two distinct personas: the **integrator** (CLI/SDK maintainer who installs Cluvo) and the **end-user** (person using that CLI who encounters an error). This section covers the integrator's perspective.
 
-### Three Integration Strategies
+### Integration Strategies by Environment
+
+```
+┌────────────────────────────────────────────────────────────────────────┐
+│                    Integrator Decision Tree                             │
+└────────────────────────────────────────────────────────────────────────┘
+
+"Which pattern fits my use case?"
+
+  ├─ CLI app with simple command structure
+  │     → wrapCommand()  (preset: 'cli', recommended)
+  │
+  ├─ CLI app with TUI (ink, blessed, etc.)
+  │     → Custom PresenterAdapter + createReporter({ presenter })
+  │
+  ├─ SDK / library (no interactive prompts)
+  │     → createReporter({ preset: 'sdk' }) + wrap()
+  │
+  ├─ CLI app that depends on SDK libraries using Cluvo
+  │     → createReporter({ childPolicy: 'absorb' }) (registry auto-wires)
+  │
+  └─ Async-heavy app needing global coverage
+        → installGlobalHandlers() + installExitHandler()
+```
+
+### Pattern A: CLI App (wrapCommand)
 
 ```
 ┌────────────────────────────────────────────────────────────────────────┐
@@ -821,6 +965,82 @@ try {
 }
 ```
 
+### Pattern B: SDK Library
+
+For libraries that should store errors without prompting the user:
+
+```typescript
+import { createReporter } from '@cluvo/sdk'
+
+const reporter = createReporter({
+  repo: 'acme/my-lib',
+  app: { name: 'my-lib', version: '1.0.0' },
+  preset: 'sdk', // no presenter, no argv, interactive: 'never'
+})
+
+// Wrap risky operations; errors are stored locally
+await reporter.wrap(async () => {
+  await riskyOperation()
+}, { rethrow: false })
+```
+
+When the library is used inside a CLI that also has a Cluvo reporter, the registry automatically connects them — the library forwards its error to the CLI's presenter.
+
+### Pattern C: TUI App (Custom Presenter)
+
+For terminal apps using a TUI framework (ink, blessed, etc.):
+
+```typescript
+import type { PresenterAdapter, PromptContext, PresenterAction } from '@cluvo/core'
+import { createReporter } from '@cluvo/sdk'
+
+class MyTuiPresenter implements PresenterAdapter {
+  async prompt(context: PromptContext): Promise<PresenterAction | null> {
+    // Pause TUI rendering
+    this.app.pause()
+    const action = await this.showErrorDialog(context.report)
+    this.app.resume()
+    return action
+  }
+}
+
+const reporter = createReporter({
+  repo: 'acme/my-tui',
+  app: { name: 'my-tui', version: '1.0.0' },
+  presenter: new MyTuiPresenter(),
+})
+```
+
+### Pattern D: Nested (CLI + SDK Library)
+
+When a CLI depends on an SDK library that both use Cluvo, the registry connects them automatically:
+
+```
+CLI process startup:
+
+  cliReporter = createReporter({ childPolicy: 'absorb' })
+    └─ Registers in global registry as a parent (has presenter)
+
+  libReporter = createReporter({ preset: 'sdk' })
+    └─ Registers in global registry as a child (no presenter)
+
+Error in library:
+
+  libReporter.wrap(() => { throw error })
+    ├─ Collects + sanitizes + stores report
+    ├─ Checks registry for parent reporter
+    └─ Calls cliReporter.receiveChildReport(report)
+          └─ CLI presenter handles the prompt
+```
+
+`childPolicy` controls the parent's behavior:
+
+```
+'absorb'      — Parent shows the error via its own presenter (child doesn't prompt)
+'passthrough' — Parent runs the full pipeline including re-prompting
+'silent'      — Parent stores child errors without prompting
+```
+
 ### Low-Level API (Advanced)
 
 For integrators who need custom pipelines (e.g., custom UI, batch processing):
@@ -844,6 +1064,10 @@ Reporter
 │ app.name               │ (required)          │ CLI/SDK name shown in reports             │
 │ app.version            │ (required)          │ Current version for environment info      │
 │ app.gitSha             │ optional            │ Git SHA for precise commit tracing        │
+├────────────────────────┼─────────────────────┼───────────────────────────────────────────┤
+│ preset                 │ 'cli'               │ 'cli' or 'sdk' — env-specific defaults    │
+│ presenter              │ TerminalPresenter   │ Custom PresenterAdapter, or null          │
+│ childPolicy            │ undefined           │ 'absorb', 'passthrough', or 'silent'      │
 ├────────────────────────┼─────────────────────┼───────────────────────────────────────────┤
 │ mode                   │ 'browser'           │ Preferred publish method for end-users    │
 │ interactive            │ 'auto'              │ 'never' to disable prompts entirely       │
