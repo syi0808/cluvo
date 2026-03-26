@@ -14,7 +14,7 @@
 	},
 	"files": ["dist/"],
 	"dependencies": {
-		"@cluvo/core": "file:../core"
+		"@cluvo/core": "workspace:*"
 	},
 	"scripts": {
 		"test": "bun test",
