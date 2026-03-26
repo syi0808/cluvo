@@ -1,5 +1,5 @@
 import type { PresenterAction, PresenterAdapter, PromptContext } from '@cluvo/core'
-import { renderDetails, renderPromptMessage, renderSummary } from '@cluvo/core'
+import { boldCyan, renderDetails, renderPromptMessage, renderSummary } from '@cluvo/core'
 
 // Capture at module load time — before TUI frameworks can patch
 const originalStdoutWriteRef = process.stdout.write // unbound, for comparison
@@ -28,7 +28,13 @@ export class TerminalPresenter implements PresenterAdapter {
 		}
 
 		const message = renderPromptMessage(context.promptMessage, context.branding?.showName)
-		write(`\n${message} `)
+		const spacing = context.promptSpacing ?? 1
+		if (spacing < 0) {
+			const up = Math.abs(spacing)
+			write(`\x1b[${up}A\x1b[2K${message} `)
+		} else {
+			write(`${'\n'.repeat(spacing)}${message} `)
+		}
 
 		const confirmed = await readYesNo(stdin, write)
 		if (!confirmed) return null
@@ -50,14 +56,14 @@ async function promptAction(
 
 	const options: string[] = []
 	if (hasMatches) {
-		options.push('[v] View similar issue')
-		if (context.authAvailable) options.push('[r] React to issue')
+		options.push(`${boldCyan('[v]')} View similar issue`)
+		if (context.authAvailable) options.push(`${boldCyan('[r]')} React to issue`)
 	}
-	options.push('[o] Open in browser')
-	options.push('[g] Create via gh')
-	options.push('[s] Save as markdown')
-	options.push('[d] Details')
-	options.push('[c] Cancel')
+	options.push(`${boldCyan('[o]')} Open in browser`)
+	options.push(`${boldCyan('[g]')} Create via gh`)
+	options.push(`${boldCyan('[s]')} Save as markdown`)
+	options.push(`${boldCyan('[d]')} Details`)
+	options.push(`${boldCyan('[c]')} Cancel`)
 
 	write(`${options.join('  ')}\n`)
 

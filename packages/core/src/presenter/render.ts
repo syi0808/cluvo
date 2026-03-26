@@ -1,5 +1,5 @@
 import type { DraftPayload, ErrorReport } from '../types.js'
-import { bold, boldCyan, dim, green, yellow } from './style.js'
+import { bold, boldCyan, cyan, dim, green, yellow } from './style.js'
 
 export function renderSummary(report: ErrorReport, draft: DraftPayload): string {
 	const lines: string[] = []
@@ -13,7 +13,7 @@ export function renderSummary(report: ErrorReport, draft: DraftPayload): string 
 	)
 
 	if (report.command?.argv?.length) {
-		lines.push(`Command: ${report.command.argv.join(' ')}`)
+		lines.push(`${dim('Command:')} ${cyan(report.command.argv.join(' '))}`)
 	}
 
 	if (report.sanitizedFields.length > 0) {
@@ -25,7 +25,7 @@ export function renderSummary(report: ErrorReport, draft: DraftPayload): string 
 		lines.push(yellow('Similar issues found:'))
 		for (const match of report.matches.slice(0, 3)) {
 			const stateLabel = match.state === 'open' ? green('[open]') : dim('[closed]')
-			lines.push(`  #${match.number} ${stateLabel}  ${match.title}`)
+			lines.push(`  ${dim('#' + match.number)} ${stateLabel}  ${match.title}`)
 		}
 	}
 

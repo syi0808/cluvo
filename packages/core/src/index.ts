@@ -17,6 +17,7 @@ export { DEFAULT_SECTIONS, formatBody, formatTitle, SECTION_RENDERERS } from './
 export { match, normalizeQuery, searchIssues } from './matcher/index.js'
 // Presenter
 export {
+	boldCyan,
 	handleNonInteractive,
 	promptUser,
 	renderDetails,

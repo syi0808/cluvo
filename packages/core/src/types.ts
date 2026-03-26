@@ -116,6 +116,7 @@ export interface ReporterConfig {
 	prompt?: {
 		message?: string
 		detailMessage?: string
+		spacing?: number
 	}
 	branding?: {
 		showName?: boolean
@@ -140,6 +141,7 @@ export interface PromptContext {
 	draft: DraftPayload
 	authAvailable: boolean
 	promptMessage?: string
+	promptSpacing?: number
 	branding?: { showName?: boolean }
 }
 

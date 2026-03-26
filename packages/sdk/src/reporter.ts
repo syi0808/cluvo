@@ -224,6 +224,7 @@ export function createReporter(userConfig: ReporterConfig | InternalConfig): Rep
 				draft,
 				authAvailable,
 				promptMessage: config.prompt?.message,
+				promptSpacing: config.prompt?.spacing,
 				branding: config.branding,
 			})
 

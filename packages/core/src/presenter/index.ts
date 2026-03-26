@@ -1,4 +1,4 @@
 export { promptUser } from './interactive.js'
 export { handleNonInteractive } from './noninteractive.js'
 export { renderDetails, renderPromptMessage, renderSummary } from './render.js'
-export { setColorEnabled, stripAnsi } from './style.js'
+export { boldCyan, setColorEnabled, stripAnsi } from './style.js'
