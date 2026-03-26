@@ -14,7 +14,7 @@ Tune `new Reporter()` configuration to match your project's needs.
 
 ## Prerequisites
 
-Search for `new Reporter(` or `createReporter(` in the codebase. If not found:
+Search for `new Reporter(` in the codebase. If not found:
 
 > Cluvo is not set up yet. Run `/cluvo-setup` first.
 
