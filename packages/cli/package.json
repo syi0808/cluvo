@@ -2,7 +2,14 @@
 	"name": "@cluvo/cli",
 	"version": "0.1.1",
 	"description": "CLI for managing stored bug reports",
-	"keywords": ["bug-reporting", "error-reporting", "cli", "open-source", "privacy", "local-first"],
+	"keywords": [
+		"bug-reporting",
+		"error-reporting",
+		"cli",
+		"open-source",
+		"privacy",
+		"local-first"
+	],
 	"license": "Apache-2.0",
 	"repository": {
 		"type": "git",
@@ -10,9 +17,9 @@
 		"directory": "packages/cli"
 	},
 	"type": "module",
-  "publishConfig": {
-    "access": "public"
-  },
+	"publishConfig": {
+		"access": "public"
+	},
 	"bin": {
 		"cluvo": "./dist/bin.cjs"
 	},

@@ -6,11 +6,5 @@
 		"name": "cluvo"
 	},
 	"license": "Apache-2.0",
-	"keywords": [
-		"cluvo",
-		"bug-reporting",
-		"error-reporting",
-		"github-issues",
-		"sdk"
-	]
+	"keywords": ["cluvo", "bug-reporting", "error-reporting", "github-issues", "sdk"]
 }

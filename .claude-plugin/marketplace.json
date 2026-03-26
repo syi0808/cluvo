@@ -16,13 +16,7 @@
 			"author": {
 				"name": "cluvo"
 			},
-			"keywords": [
-				"cluvo",
-				"bug-reporting",
-				"error-reporting",
-				"github-issues",
-				"sdk"
-			],
+			"keywords": ["cluvo", "bug-reporting", "error-reporting", "github-issues", "sdk"],
 			"category": "devtools"
 		}
 	]

@@ -2,7 +2,15 @@
 	"name": "@cluvo/sdk",
 	"version": "0.1.1",
 	"description": "High-level Reporter API for local-first bug reporting",
-	"keywords": ["bug-reporting", "error-reporting", "cli", "sdk", "open-source", "privacy", "local-first"],
+	"keywords": [
+		"bug-reporting",
+		"error-reporting",
+		"cli",
+		"sdk",
+		"open-source",
+		"privacy",
+		"local-first"
+	],
 	"license": "Apache-2.0",
 	"repository": {
 		"type": "git",
@@ -10,9 +18,9 @@
 		"directory": "packages/sdk"
 	},
 	"type": "module",
-  "publishConfig": {
-    "access": "public"
-  },
+	"publishConfig": {
+		"access": "public"
+	},
 	"main": "./dist/index.cjs",
 	"module": "./dist/index.js",
 	"types": "./dist/index.d.ts",
