@@ -3,14 +3,15 @@
 	"version": "0.0.1",
 	"type": "module",
 	"bin": {
-		"cluvo": "src/bin.ts"
+		"cluvo": "./dist/bin.cjs"
 	},
+	"files": ["dist/"],
 	"dependencies": {
 		"@cluvo/core": "workspace:*",
 		"@cluvo/sdk": "workspace:*"
 	},
 	"scripts": {
 		"test": "bun test",
-		"build": "bun build src/bin.ts --outdir dist --target node"
+		"build": "bun run ./build.ts"
 	}
 }
