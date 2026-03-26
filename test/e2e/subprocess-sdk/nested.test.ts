@@ -1,22 +1,22 @@
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 import { rm } from 'node:fs/promises'
-import { runScript, createTempStoreDir, readReports, SDK_IMPORT } from '../helpers/subprocess.js'
-import { mockFetchScript } from '../helpers/mock-fetch.js'
 import { environments } from '../helpers/environments.js'
+import { mockFetchScript } from '../helpers/mock-fetch.js'
+import { createTempStoreDir, readReports, runScript, SDK_IMPORT } from '../helpers/subprocess.js'
 
 describe('E2E: subprocess-sdk/nested', () => {
-  let storeDir: string
+	let storeDir: string
 
-  beforeEach(async () => {
-    storeDir = await createTempStoreDir()
-  })
+	beforeEach(async () => {
+		storeDir = await createTempStoreDir()
+	})
 
-  afterEach(async () => {
-    await rm(storeDir, { recursive: true, force: true })
-  })
+	afterEach(async () => {
+		await rm(storeDir, { recursive: true, force: true })
+	})
 
-  // Post-order: child (deeper depth) registers before parent (shallower depth)
-  const nestedScript = (childPolicy: string) => `
+	// Post-order: child (deeper depth) registers before parent (shallower depth)
+	const nestedScript = (childPolicy: string) => `
 import { createReporter } from '${SDK_IMPORT}';
 const storeDir = process.env.CLUVO_TEST_STORE_DIR!;
 
@@ -43,41 +43,41 @@ const parent = createReporter({
 await child.reportAndPrompt(new Error('child error'));
 `
 
-  test('1: absorb -- child report saved, parent presenter would be called', async () => {
-    const result = await runScript(nestedScript('absorb'), {
-      env: environments.pipe,
-      storeDir,
-      prependCode: mockFetchScript(),
-    })
-    expect(result.exitCode).toBe(0)
-    const childReports = await readReports(storeDir, 'child-sdk')
-    expect(childReports).toHaveLength(1)
-  })
+	test('1: absorb -- child report saved, parent presenter would be called', async () => {
+		const result = await runScript(nestedScript('absorb'), {
+			env: environments.pipe,
+			storeDir,
+			prependCode: mockFetchScript(),
+		})
+		expect(result.exitCode).toBe(0)
+		const childReports = await readReports(storeDir, 'child-sdk')
+		expect(childReports).toHaveLength(1)
+	})
 
-  test('2: passthrough -- child store has report', async () => {
-    const result = await runScript(nestedScript('passthrough'), {
-      env: environments.pipe,
-      storeDir,
-      prependCode: mockFetchScript(),
-    })
-    expect(result.exitCode).toBe(0)
-    const childReports = await readReports(storeDir, 'child-sdk')
-    expect(childReports).toHaveLength(1)
-  })
+	test('2: passthrough -- child store has report', async () => {
+		const result = await runScript(nestedScript('passthrough'), {
+			env: environments.pipe,
+			storeDir,
+			prependCode: mockFetchScript(),
+		})
+		expect(result.exitCode).toBe(0)
+		const childReports = await readReports(storeDir, 'child-sdk')
+		expect(childReports).toHaveLength(1)
+	})
 
-  test('3: silent -- no output, child store only', async () => {
-    const result = await runScript(nestedScript('silent'), {
-      env: environments.pipe,
-      storeDir,
-      prependCode: mockFetchScript(),
-    })
-    expect(result.exitCode).toBe(0)
-    const childReports = await readReports(storeDir, 'child-sdk')
-    expect(childReports).toHaveLength(1)
-  })
+	test('3: silent -- no output, child store only', async () => {
+		const result = await runScript(nestedScript('silent'), {
+			env: environments.pipe,
+			storeDir,
+			prependCode: mockFetchScript(),
+		})
+		expect(result.exitCode).toBe(0)
+		const childReports = await readReports(storeDir, 'child-sdk')
+		expect(childReports).toHaveLength(1)
+	})
 
-  test('4: parent + child each error -- both stores have reports', async () => {
-    const script = `
+	test('4: parent + child each error -- both stores have reports', async () => {
+		const script = `
 import { createReporter } from '${SDK_IMPORT}';
 const storeDir = process.env.CLUVO_TEST_STORE_DIR!;
 const child = createReporter({
@@ -98,20 +98,20 @@ const parent = createReporter({
 await parent.reportError(new Error('parent error'));
 await child.reportError(new Error('child error'));
 `
-    const result = await runScript(script, {
-      env: environments.pipe,
-      storeDir,
-      prependCode: mockFetchScript(),
-    })
-    expect(result.exitCode).toBe(0)
-    const parentReports = await readReports(storeDir, 'parent-cli')
-    const childReports = await readReports(storeDir, 'child-sdk')
-    expect(parentReports).toHaveLength(1)
-    expect(childReports).toHaveLength(1)
-  })
+		const result = await runScript(script, {
+			env: environments.pipe,
+			storeDir,
+			prependCode: mockFetchScript(),
+		})
+		expect(result.exitCode).toBe(0)
+		const parentReports = await readReports(storeDir, 'parent-cli')
+		const childReports = await readReports(storeDir, 'child-sdk')
+		expect(parentReports).toHaveLength(1)
+		expect(childReports).toHaveLength(1)
+	})
 
-  test('5: child alone (no parent) -- no crash', async () => {
-    const script = `
+	test('5: child alone (no parent) -- no crash', async () => {
+		const script = `
 import { createReporter } from '${SDK_IMPORT}';
 const storeDir = process.env.CLUVO_TEST_STORE_DIR!;
 const child = createReporter({
@@ -123,18 +123,18 @@ const child = createReporter({
 });
 await child.reportAndPrompt(new Error('standalone error'));
 `
-    const result = await runScript(script, {
-      env: environments.pipe,
-      storeDir,
-      prependCode: mockFetchScript(),
-    })
-    expect(result.exitCode).toBe(0)
-    const reports = await readReports(storeDir, 'standalone-sdk')
-    expect(reports).toHaveLength(1)
-  })
+		const result = await runScript(script, {
+			env: environments.pipe,
+			storeDir,
+			prependCode: mockFetchScript(),
+		})
+		expect(result.exitCode).toBe(0)
+		const reports = await readReports(storeDir, 'standalone-sdk')
+		expect(reports).toHaveLength(1)
+	})
 
-  test('6: 3-level nesting absorb chain -- child report saved', async () => {
-    const script = `
+	test('6: 3-level nesting absorb chain -- child report saved', async () => {
+		const script = `
 import { createReporter } from '${SDK_IMPORT}';
 const storeDir = process.env.CLUVO_TEST_STORE_DIR!;
 const child = createReporter({
@@ -161,13 +161,13 @@ const grandparent = createReporter({
 });
 await child.reportAndPrompt(new Error('deep nested error'));
 `
-    const result = await runScript(script, {
-      env: environments.pipe,
-      storeDir,
-      prependCode: mockFetchScript(),
-    })
-    expect(result.exitCode).toBe(0)
-    const childReports = await readReports(storeDir, 'child')
-    expect(childReports).toHaveLength(1)
-  })
+		const result = await runScript(script, {
+			env: environments.pipe,
+			storeDir,
+			prependCode: mockFetchScript(),
+		})
+		expect(result.exitCode).toBe(0)
+		const childReports = await readReports(storeDir, 'child')
+		expect(childReports).toHaveLength(1)
+	})
 })

@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test } from 'bun:test'
-import { getRegistry, resetRegistry } from '../src/registry.js'
 import type { RegisteredReporter } from '../src/registry.js'
+import { getRegistry, resetRegistry } from '../src/registry.js'
 
 function fakeReporter(): RegisteredReporter['reporter'] {
 	return {
@@ -28,8 +28,18 @@ describe('ReporterRegistry', () => {
 	test('post-order: deeper depth registered first becomes child', () => {
 		const registry = getRegistry()
 		// ESM post-order: child (deeper) registers before parent (shallower)
-		const child = { id: 'child', depth: 7, reporter: fakeReporter(), childPolicy: 'absorb' as const }
-		const parent = { id: 'parent', depth: 5, reporter: fakeReporter(), childPolicy: 'absorb' as const }
+		const child = {
+			id: 'child',
+			depth: 7,
+			reporter: fakeReporter(),
+			childPolicy: 'absorb' as const,
+		}
+		const parent = {
+			id: 'parent',
+			depth: 5,
+			reporter: fakeReporter(),
+			childPolicy: 'absorb' as const,
+		}
 		registry.register(child)
 		registry.register(parent)
 		expect(registry.getParent(child)?.id).toBe('parent')
@@ -38,9 +48,24 @@ describe('ReporterRegistry', () => {
 
 	test('3-level nesting: grandchild → child → parent', () => {
 		const registry = getRegistry()
-		const grandchild = { id: 'grandchild', depth: 9, reporter: fakeReporter(), childPolicy: 'absorb' as const }
-		const child = { id: 'child', depth: 7, reporter: fakeReporter(), childPolicy: 'absorb' as const }
-		const parent = { id: 'parent', depth: 5, reporter: fakeReporter(), childPolicy: 'absorb' as const }
+		const grandchild = {
+			id: 'grandchild',
+			depth: 9,
+			reporter: fakeReporter(),
+			childPolicy: 'absorb' as const,
+		}
+		const child = {
+			id: 'child',
+			depth: 7,
+			reporter: fakeReporter(),
+			childPolicy: 'absorb' as const,
+		}
+		const parent = {
+			id: 'parent',
+			depth: 5,
+			reporter: fakeReporter(),
+			childPolicy: 'absorb' as const,
+		}
 		registry.register(grandchild)
 		registry.register(child)
 		registry.register(parent)
@@ -52,9 +77,24 @@ describe('ReporterRegistry', () => {
 	test('siblings: same depth reporters share parent', () => {
 		const registry = getRegistry()
 		// parent imports child-a and child-b (post-order: child-a, child-b, parent)
-		const childA = { id: 'child-a', depth: 7, reporter: fakeReporter(), childPolicy: 'absorb' as const }
-		const childB = { id: 'child-b', depth: 7, reporter: fakeReporter(), childPolicy: 'absorb' as const }
-		const parent = { id: 'parent', depth: 5, reporter: fakeReporter(), childPolicy: 'absorb' as const }
+		const childA = {
+			id: 'child-a',
+			depth: 7,
+			reporter: fakeReporter(),
+			childPolicy: 'absorb' as const,
+		}
+		const childB = {
+			id: 'child-b',
+			depth: 7,
+			reporter: fakeReporter(),
+			childPolicy: 'absorb' as const,
+		}
+		const parent = {
+			id: 'parent',
+			depth: 5,
+			reporter: fakeReporter(),
+			childPolicy: 'absorb' as const,
+		}
 		registry.register(childA)
 		registry.register(childB)
 		registry.register(parent)
@@ -77,10 +117,30 @@ describe('ReporterRegistry', () => {
 		const registry = getRegistry()
 		// Tree: parent → child-a → nephew, parent → child-b
 		// Post-order: nephew, child-a, child-b, parent
-		const nephew = { id: 'nephew', depth: 9, reporter: fakeReporter(), childPolicy: 'absorb' as const }
-		const childA = { id: 'child-a', depth: 7, reporter: fakeReporter(), childPolicy: 'absorb' as const }
-		const childB = { id: 'child-b', depth: 7, reporter: fakeReporter(), childPolicy: 'absorb' as const }
-		const parent = { id: 'parent', depth: 5, reporter: fakeReporter(), childPolicy: 'absorb' as const }
+		const nephew = {
+			id: 'nephew',
+			depth: 9,
+			reporter: fakeReporter(),
+			childPolicy: 'absorb' as const,
+		}
+		const childA = {
+			id: 'child-a',
+			depth: 7,
+			reporter: fakeReporter(),
+			childPolicy: 'absorb' as const,
+		}
+		const childB = {
+			id: 'child-b',
+			depth: 7,
+			reporter: fakeReporter(),
+			childPolicy: 'absorb' as const,
+		}
+		const parent = {
+			id: 'parent',
+			depth: 5,
+			reporter: fakeReporter(),
+			childPolicy: 'absorb' as const,
+		}
 		registry.register(nephew)
 		registry.register(childA)
 		registry.register(childB)
@@ -93,8 +153,18 @@ describe('ReporterRegistry', () => {
 
 	test('unregister removes reporter and re-resolves hierarchy', () => {
 		const registry = getRegistry()
-		const child = { id: 'child', depth: 7, reporter: fakeReporter(), childPolicy: 'absorb' as const }
-		const parent = { id: 'parent', depth: 5, reporter: fakeReporter(), childPolicy: 'absorb' as const }
+		const child = {
+			id: 'child',
+			depth: 7,
+			reporter: fakeReporter(),
+			childPolicy: 'absorb' as const,
+		}
+		const parent = {
+			id: 'parent',
+			depth: 5,
+			reporter: fakeReporter(),
+			childPolicy: 'absorb' as const,
+		}
 		registry.register(child)
 		registry.register(parent)
 		expect(registry.getParent(child)?.id).toBe('parent')
@@ -116,8 +186,18 @@ describe('ReporterRegistry', () => {
 			// With a naive "previous = parent" algorithm, the first registrant
 			// would be treated as parent. The depth-based algorithm must make
 			// the deeper reporter the child regardless of registration order.
-			const child = { id: 'child', depth: 10, reporter: fakeReporter(), childPolicy: 'absorb' as const }
-			const parent = { id: 'parent', depth: 4, reporter: fakeReporter(), childPolicy: 'absorb' as const }
+			const child = {
+				id: 'child',
+				depth: 10,
+				reporter: fakeReporter(),
+				childPolicy: 'absorb' as const,
+			}
+			const parent = {
+				id: 'parent',
+				depth: 4,
+				reporter: fakeReporter(),
+				childPolicy: 'absorb' as const,
+			}
 
 			// Child registers first (ESM post-order: deepest module executes first)
 			registry.register(child)
@@ -133,9 +213,24 @@ describe('ReporterRegistry', () => {
 
 		test('reversed registration in 3-level chain: grandchild, child, parent', () => {
 			const registry = getRegistry()
-			const grandchild = { id: 'gc', depth: 15, reporter: fakeReporter(), childPolicy: 'absorb' as const }
-			const child = { id: 'mid', depth: 10, reporter: fakeReporter(), childPolicy: 'absorb' as const }
-			const parent = { id: 'root', depth: 5, reporter: fakeReporter(), childPolicy: 'absorb' as const }
+			const grandchild = {
+				id: 'gc',
+				depth: 15,
+				reporter: fakeReporter(),
+				childPolicy: 'absorb' as const,
+			}
+			const child = {
+				id: 'mid',
+				depth: 10,
+				reporter: fakeReporter(),
+				childPolicy: 'absorb' as const,
+			}
+			const parent = {
+				id: 'root',
+				depth: 5,
+				reporter: fakeReporter(),
+				childPolicy: 'absorb' as const,
+			}
 
 			// All register in reverse depth order (deepest first)
 			registry.register(grandchild)
@@ -151,14 +246,24 @@ describe('ReporterRegistry', () => {
 	describe('regression: late parent registration re-resolves hierarchy', () => {
 		test('child registers first, parent registers later — hierarchy re-resolves', () => {
 			const registry = getRegistry()
-			const child = { id: 'child', depth: 8, reporter: fakeReporter(), childPolicy: 'absorb' as const }
+			const child = {
+				id: 'child',
+				depth: 8,
+				reporter: fakeReporter(),
+				childPolicy: 'absorb' as const,
+			}
 
 			registry.register(child)
 			// No parent registered yet — child is a root
 			expect(registry.getParent(child)).toBeNull()
 
 			// Parent registers later (e.g., lazy import or dynamic registration)
-			const parent = { id: 'parent', depth: 4, reporter: fakeReporter(), childPolicy: 'absorb' as const }
+			const parent = {
+				id: 'parent',
+				depth: 4,
+				reporter: fakeReporter(),
+				childPolicy: 'absorb' as const,
+			}
 			registry.register(parent)
 
 			// After re-resolve, child must now point to parent
@@ -170,9 +275,24 @@ describe('ReporterRegistry', () => {
 	describe('regression: re-resolve on unregister promotes children', () => {
 		test('unregistering middle node makes grandchild a direct child of grandparent', () => {
 			const registry = getRegistry()
-			const grandchild = { id: 'gc', depth: 12, reporter: fakeReporter(), childPolicy: 'absorb' as const }
-			const middle = { id: 'mid', depth: 8, reporter: fakeReporter(), childPolicy: 'absorb' as const }
-			const grandparent = { id: 'gp', depth: 4, reporter: fakeReporter(), childPolicy: 'absorb' as const }
+			const grandchild = {
+				id: 'gc',
+				depth: 12,
+				reporter: fakeReporter(),
+				childPolicy: 'absorb' as const,
+			}
+			const middle = {
+				id: 'mid',
+				depth: 8,
+				reporter: fakeReporter(),
+				childPolicy: 'absorb' as const,
+			}
+			const grandparent = {
+				id: 'gp',
+				depth: 4,
+				reporter: fakeReporter(),
+				childPolicy: 'absorb' as const,
+			}
 
 			registry.register(grandchild)
 			registry.register(middle)
@@ -193,8 +313,18 @@ describe('ReporterRegistry', () => {
 
 		test('unregistering middle node with no grandparent makes child a root', () => {
 			const registry = getRegistry()
-			const grandchild = { id: 'gc', depth: 12, reporter: fakeReporter(), childPolicy: 'absorb' as const }
-			const middle = { id: 'mid', depth: 8, reporter: fakeReporter(), childPolicy: 'absorb' as const }
+			const grandchild = {
+				id: 'gc',
+				depth: 12,
+				reporter: fakeReporter(),
+				childPolicy: 'absorb' as const,
+			}
+			const middle = {
+				id: 'mid',
+				depth: 8,
+				reporter: fakeReporter(),
+				childPolicy: 'absorb' as const,
+			}
 
 			registry.register(grandchild)
 			registry.register(middle)

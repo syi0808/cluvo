@@ -2,11 +2,11 @@ import { afterEach, beforeEach, describe, expect, mock, test } from 'bun:test'
 import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import type { PresenterAction, PresenterAdapter, PromptContext } from '@cluvo/core'
 import { Store } from '@cluvo/core'
-import type { PresenterAdapter, PresenterAction, PromptContext } from '@cluvo/core'
 import type { InternalConfig } from '../src/config.js'
-import { createReporter } from '../src/reporter.js'
 import { resetRegistry } from '../src/registry.js'
+import { createReporter } from '../src/reporter.js'
 
 // Simulate ESM post-order depths: child (deeper) registers before parent (shallower)
 const DEPTH = { parent: 5, child: 7 } as const
@@ -107,7 +107,9 @@ describe('nested reporters', () => {
 	})
 
 	test('absorb: child error forwarded to parent', async () => {
-		const parentPrompted = mock(async (ctx: PromptContext) => ({ type: 'cancel' } as PresenterAction))
+		const parentPrompted = mock(
+			async (ctx: PromptContext) => ({ type: 'cancel' }) as PresenterAction,
+		)
 		const parentPresenter: PresenterAdapter = { prompt: parentPrompted }
 
 		// Post-order: child registers first (deeper), then parent (shallower)
@@ -141,7 +143,9 @@ describe('nested reporters', () => {
 	})
 
 	test('passthrough: child uses own presenter', async () => {
-		const childPrompted = mock(async (ctx: PromptContext) => ({ type: 'cancel' } as PresenterAction))
+		const childPrompted = mock(
+			async (ctx: PromptContext) => ({ type: 'cancel' }) as PresenterAction,
+		)
 		const childPresenter: PresenterAdapter = { prompt: childPrompted }
 
 		const child = createReporter({
@@ -266,7 +270,9 @@ describe('nested reporters', () => {
 
 	test('presenter.prompt() throwing is swallowed', async () => {
 		const throwingPresenter: PresenterAdapter = {
-			prompt: async () => { throw new Error('presenter crashed') },
+			prompt: async () => {
+				throw new Error('presenter crashed')
+			},
 		}
 		const reporter = createReporter({
 			repo: 'owner/repo',
@@ -343,7 +349,9 @@ describe('nested reporters', () => {
 
 		try {
 			await reporter.wrapCommand(
-				async () => { throw new Error('argv test') },
+				async () => {
+					throw new Error('argv test')
+				},
 				{ rethrow: false },
 			)
 		} finally {

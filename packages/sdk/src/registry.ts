@@ -25,10 +25,7 @@ const REGISTRY_KEY = Symbol.for('cluvo.registry')
  * Combined with call stack depth (deeper import chain = higher frame count),
  * we can rebuild the full tree without explicit parent declarations.
  */
-function resolveHierarchy(
-	stack: RegisteredReporter[],
-	parentMap: Map<string, string>,
-): void {
+function resolveHierarchy(stack: RegisteredReporter[], parentMap: Map<string, string>): void {
 	parentMap.clear()
 	const pending: RegisteredReporter[] = []
 

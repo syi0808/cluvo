@@ -30,65 +30,42 @@ import { PRESETS } from './presets.js'
 import { getRegistry } from './registry.js'
 import { TerminalPresenter } from './terminal-presenter.js'
 
-export interface Reporter {
-	reportError(error: unknown, context?: ErrorContext): Promise<ErrorReport>
-	reportAndPrompt(error: unknown, context?: ErrorContext): Promise<void>
-	promptAndSubmit(report: ErrorReport): Promise<void>
-	wrap(fn: () => Promise<void>, opts?: WrapOptions): Promise<void>
-	wrapCommand(fn: () => Promise<void>, opts?: WrapOptions): Promise<void>
-	installGlobalHandlers(): () => void
-	installExitHandler(opts?: ExitHandlerOptions): () => void
-	buildReport(error: unknown, context?: ErrorContext): ErrorReport
-	sanitizeReport(report: ErrorReport): ErrorReport
-	findMatches(report: ErrorReport): Promise<MatchResult>
-	buildDraft(report: ErrorReport): DraftPayload
-	publish(draft: DraftPayload): Promise<PublishResult>
-	receiveChildReport(report: ErrorReport): Promise<void>
-}
-
 /**
- * Capture the call stack depth at the createReporter() call site.
- * Used to reconstruct parent-child hierarchy from ESM post-order execution.
- */
-function captureCallDepth(): number {
-	return (new Error().stack ?? '').split('\n').length
-}
-
-/**
- * Detect whether createReporter() was called at module top-level.
- * Uses V8/JSC structured stack trace API (supported by Node.js and Bun).
+ * Check whether the first non-SDK caller frame is at module top-level.
  *
- * At module top-level, the caller frame has no function name.
- * V8 returns null, Bun/JSC returns "" — both are treated as top-level.
- * Inside a named function, getFunctionName() returns the function name.
+ * Top-level:  "at /path/file.ts:5"  or  "at \<anonymous\> (/path:5)"
+ * Function:   "at namedFunction (/path:5)"
  */
-function isModuleTopLevel(): boolean {
-	const orig = Error.prepareStackTrace
-	let callSites: { getFileName?(): string | null; getFunctionName?(): string | null }[] = []
+function checkTopLevel(stack: string): boolean {
+	const lines = stack.split('\n')
 
-	Error.prepareStackTrace = (_, sites) => {
-		callSites = sites
-		return ''
-	}
-	const err = new Error()
-	void err.stack
-	Error.prepareStackTrace = orig
+	for (const line of lines) {
+		if (!line.includes('at ')) continue
 
-	// Known internal function names to skip
-	const INTERNAL_FNS = new Set(['captureCallDepth', 'isModuleTopLevel', 'createReporter'])
+		// Skip SDK-internal frames by path
+		if (
+			line.includes('@cluvo/') ||
+			line.includes('/packages/sdk/src/') ||
+			line.includes('/packages/core/src/')
+		)
+			continue
+		// Skip runtime internals
+		if (line.includes('(native:') || line.includes('node:') || line.includes('bun:')) continue
 
-	// Walk up the stack to find the first frame outside SDK internals
-	for (const site of callSites) {
-		const fnName = site.getFunctionName?.()
-		if (fnName && INTERNAL_FNS.has(fnName)) continue
+		// Parse: "    at functionName (file:line:col)" or "    at file:line:col"
+		const match = line.match(/at\s+(.+)/)
+		if (!match) continue
+		const rest = match[1]
 
-		const fileName = site.getFileName?.() ?? ''
-		if (fileName.includes('@cluvo/') || fileName.includes('cluvo/packages/')) continue
-		if (fileName.startsWith('node:') || fileName.startsWith('bun:')) continue
-		if (!fileName) continue
+		// Skip constructor frame
+		if (rest.startsWith('new Reporter ') || rest.startsWith('new Reporter (')) continue
 
-		// At module top-level: getFunctionName() is null (V8) or "" (Bun/JSC)
-		return !fnName
+		if (process.env.CLUVO_DEBUG) process.stderr.write(`[cluvo] top-level check: ${rest}\n`)
+
+		// Top-level: path without function name, or anonymous wrapper
+		if (rest.startsWith('/') || rest.startsWith('.') || /^[a-zA-Z]:/.test(rest)) return true
+		if (rest.startsWith('<anonymous>') || rest.startsWith('Object.<anonymous>')) return true
+		return false
 	}
 	return true // couldn't determine → assume top-level
 }
@@ -103,332 +80,345 @@ const NOOP_REPORT: ErrorReport = {
 	status: 'dismissed',
 }
 
-const NOOP_REPORTER: Reporter = {
-	reportError: async () => NOOP_REPORT,
-	reportAndPrompt: async () => {},
-	promptAndSubmit: async () => {},
-	wrap: async (fn) => {
-		await fn()
-	},
-	wrapCommand: async (fn) => {
-		await fn()
-	},
-	installGlobalHandlers: () => () => {},
-	installExitHandler: () => () => {},
-	buildReport: () => NOOP_REPORT,
-	sanitizeReport: (r) => r,
-	findMatches: async () => ({ found: false, matches: [] }),
-	buildDraft: () => ({ title: '', body: '' }),
-	publish: async () => ({ method: 'terminal' as const }),
-	receiveChildReport: async () => {},
-}
+/**
+ * Bug reporter for CLI/SDK applications.
+ *
+ * Must be instantiated at module top-level for correct nested hierarchy detection.
+ * Bun applies tail-call optimization to regular function calls, dropping caller
+ * frames from stack traces. Using `new` prevents this optimization.
+ * See: https://github.com/oven-sh/bun/issues/24789
+ *
+ * If instantiated inside a named function, all methods silently become no-ops.
+ *
+ * @example
+ * ```ts
+ * import { Reporter } from '@cluvo/sdk'
+ * const reporter = new Reporter({ repo: 'owner/repo', app: { name: 'my-cli', version: '1.0.0' } })
+ * ```
+ */
+export class Reporter {
+	reportError: (error: unknown, context?: ErrorContext) => Promise<ErrorReport>
+	reportAndPrompt: (error: unknown, context?: ErrorContext) => Promise<void>
+	promptAndSubmit: (report: ErrorReport) => Promise<void>
+	wrap: (fn: () => Promise<void>, opts?: WrapOptions) => Promise<void>
+	wrapCommand: (fn: () => Promise<void>, opts?: WrapOptions) => Promise<void>
+	installGlobalHandlers: () => () => void
+	installExitHandler: (opts?: ExitHandlerOptions) => () => void
+	buildReport: (error: unknown, context?: ErrorContext) => ErrorReport
+	sanitizeReport: (report: ErrorReport) => ErrorReport
+	findMatches: (report: ErrorReport) => Promise<MatchResult>
+	buildDraft: (report: ErrorReport) => DraftPayload
+	publish: (draft: DraftPayload) => Promise<PublishResult>
+	receiveChildReport: (report: ErrorReport) => Promise<void>
 
-export function createReporter(userConfig: ReporterConfig | InternalConfig): Reporter {
-	// Must be called at module top-level for correct hierarchy detection.
-	// If called inside a function, return a no-op reporter that silently does nothing.
-	const internalConfig = userConfig as InternalConfig
-	const callDepth = internalConfig._depth ?? captureCallDepth()
-	if (!internalConfig._skipTopLevelCheck && !isModuleTopLevel()) {
-		return NOOP_REPORTER
-	}
-
-	const config = resolveConfig(userConfig as InternalConfig)
-	const store = new Store(config.storeDir, config.store?.maxReports)
-
-	// --- Presenter resolution ---
-	const presetName = config.preset ?? 'cli'
-	let presenter: PresenterAdapter | null
-	if (config.presenter !== undefined) {
-		presenter = config.presenter
-	} else if (config.interactive === 'never') {
-		presenter = null
-	} else {
-		const presetPresenter = PRESETS[presetName]?.presenter
-		presenter = presetPresenter === 'terminal' ? new TerminalPresenter() : null
-	}
-
-	// --- Registry integration ---
-	const reporterId = config.app.name
-	const registry = getRegistry()
-	const registeredEntry = {
-		id: reporterId,
-		depth: callDepth,
-		reporter: { receiveChildReport },
-		childPolicy: config.childPolicy ?? 'passthrough',
-	}
-	registry.register(registeredEntry)
-
-	// --- Error dedup ---
-	const seenErrors = new WeakMap<object, ErrorReport>()
-
-	// --- Prompt queue ---
-	let promptQueue = Promise.resolve()
-	function enqueuePrompt(fn: () => Promise<void>): Promise<void> {
-		const task = promptQueue.then(fn, () => fn())
-		promptQueue = task.catch(() => {})
-		return task
-	}
-
-	function buildReport(error: unknown, context?: ErrorContext): ErrorReport {
-		const errorPayload = captureError(error)
-		const environment = collectEnvironment()
-		const app = collectApp(config.app)
-
-		const command = context
-			? { command: context.command, subcommand: context.subcommand, argv: context.argv }
-			: config.collect?.argv !== false
-				? collectCommand()
-				: undefined
-
-		const diagnostic = config.collect?.diagnosticReport ? collectDiagnostic() : undefined
-
-		return {
-			id: generateReportId(),
-			createdAt: new Date().toISOString(),
-			app,
-			error: errorPayload,
-			environment,
-			command,
-			diagnostic,
-			sanitizedFields: [],
-			metadata: context?.metadata,
-			status: 'pending',
-		}
-	}
-
-	function sanitizeReport(report: ErrorReport): ErrorReport {
-		if (config.sanitize?.enabled === false) return report
-		return sanitize(report, config.sanitize?.customRules)
-	}
-
-	async function findMatches(report: ErrorReport): Promise<MatchResult> {
-		return match(report, config)
-	}
-
-	function buildDraft(report: ErrorReport): DraftPayload {
-		const titleFormatter = config.issue?.title
-		const title = formatTitle(report, titleFormatter)
-		const body = formatBody(report, { sections: config.issue?.sections })
-		return {
-			title,
-			body,
-			labels: config.issue?.labels,
-		}
-	}
-
-	async function publishDraft(draft: DraftPayload): Promise<PublishResult> {
-		return corePublish(draft, {
-			repo: config.repo,
-			mode: config.mode,
-		})
-	}
-
-	async function reportError(error: unknown, context?: ErrorContext): Promise<ErrorReport> {
-		// Dedup: return cached report for same error object (primitives bypass dedup — WeakMap constraint)
-		if (typeof error === 'object' && error !== null && seenErrors.has(error)) {
-			return seenErrors.get(error)!
-		}
-
+	constructor(userConfig: ReporterConfig | InternalConfig) {
+		// Stack capture via throw/catch inside the constructor.
+		// Bun preserves all caller frames for `new` calls (no TCO).
+		const internalConfig = userConfig as InternalConfig
+		let stack: string
 		try {
-			const report = buildReport(error, context)
-			const sanitized = sanitizeReport(report)
-
-			if (config.store?.enabled !== false) {
-				await store.save(sanitized)
-			}
-
-			// Cache for dedup
-			if (typeof error === 'object' && error !== null) {
-				seenErrors.set(error, sanitized)
-			}
-
-			return sanitized
-		} catch {
-			// Never throw -- return minimal report
-			const minimal: ErrorReport = {
-				id: generateReportId(),
-				createdAt: new Date().toISOString(),
-				app: { name: config.app.name, version: config.app.version, runtime: 'unknown' },
-				error: { name: 'Error', message: String(error) },
-				environment: { os: 'unknown', arch: 'unknown', runtimeVersion: 'unknown' },
-				sanitizedFields: [],
-				status: 'pending',
-			}
-			if (typeof error === 'object' && error !== null) {
-				seenErrors.set(error, minimal)
-			}
-			return minimal
+			throw new Error()
+		} catch (e: unknown) {
+			stack = (e as Error).stack ?? ''
 		}
-	}
+		if (process.env.CLUVO_DEBUG) process.stderr.write(`[cluvo] raw stack:\n${stack}\n`)
+		const callDepth = internalConfig._depth ?? stack.split('\n').length
 
-	async function promptAndSubmit(report: ErrorReport): Promise<void> {
-		// Check parent's childPolicy
-		const myEntry = registry.stack.find((e) => e.id === reporterId)
-		if (myEntry) {
-			const parent = registry.getParent(myEntry)
-			if (parent) {
-				switch (parent.childPolicy) {
-					case 'absorb':
-						// Forward to parent, don't prompt locally
-						await parent.reporter.receiveChildReport(report)
-						return
-					case 'silent':
-						// Store only, no prompt (already stored in reportError)
-						return
-					case 'passthrough':
-						// Fall through to normal prompt
-						break
-				}
+		if (!internalConfig._skipTopLevelCheck && !checkTopLevel(stack)) {
+			// Non-top-level: assign no-op implementations
+			this.reportError = async () => NOOP_REPORT
+			this.reportAndPrompt = async () => {}
+			this.promptAndSubmit = async () => {}
+			this.wrap = async (fn) => {
+				await fn()
 			}
-		}
-
-		// Dedupe check
-		const matchResult =
-			config.dedupe?.enabled !== false ? await findMatches(report) : { found: false, matches: [] }
-		if (matchResult.found) {
-			report = { ...report, matches: matchResult.matches }
-		}
-
-		const draft = buildDraft(report)
-
-		// If no presenter, handle non-interactive
-		if (!presenter) {
-			const filePath =
-				config.store?.enabled !== false
-					? `${config.storeDir}/reports/${report.app.name}/${report.id}.json`
-					: undefined
-			handleNonInteractive(report, config.nonInteractive ?? 'save', filePath)
-			await store.updateStatus(report.app.name, report.id, 'dismissed')
+			this.wrapCommand = async (fn) => {
+				await fn()
+			}
+			this.installGlobalHandlers = () => () => {}
+			this.installExitHandler = () => () => {}
+			this.buildReport = () => NOOP_REPORT
+			this.sanitizeReport = (r) => r
+			this.findMatches = async () => ({ found: false, matches: [] })
+			this.buildDraft = () => ({ title: '', body: '' })
+			this.publish = async () => ({ method: 'terminal' as const })
+			this.receiveChildReport = async () => {}
 			return
 		}
 
-		// Use presenter adapter
-		const authAvailable = await isAuthAvailable()
-		try {
-			const action = await presenter.prompt({
-				report,
-				draft,
-				authAvailable,
-				promptMessage: config.prompt?.message,
-				promptSpacing: config.prompt?.spacing,
-				branding: config.branding,
-			})
+		const config = resolveConfig(userConfig as InternalConfig)
+		const store = new Store(config.storeDir, config.store?.maxReports)
 
-			if (!action || action.type === 'cancel') {
+		// --- Presenter resolution ---
+		const presetName = config.preset ?? 'cli'
+		let presenter: PresenterAdapter | null
+		if (config.presenter !== undefined) {
+			presenter = config.presenter
+		} else if (config.interactive === 'never') {
+			presenter = null
+		} else {
+			const presetPresenter = PRESETS[presetName]?.presenter
+			presenter = presetPresenter === 'terminal' ? new TerminalPresenter() : null
+		}
+
+		// --- Registry integration ---
+		const reporterId = config.app.name
+		const registry = getRegistry()
+		const registeredEntry = {
+			id: reporterId,
+			depth: callDepth,
+			reporter: { receiveChildReport: (report: ErrorReport) => this.receiveChildReport(report) },
+			childPolicy: config.childPolicy ?? 'passthrough',
+		}
+		registry.register(registeredEntry)
+
+		// --- Error dedup ---
+		const seenErrors = new WeakMap<object, ErrorReport>()
+
+		// --- Prompt queue ---
+		let promptQueue = Promise.resolve()
+		function enqueuePrompt(fn: () => Promise<void>): Promise<void> {
+			const task = promptQueue.then(fn, () => fn())
+			promptQueue = task.catch(() => {})
+			return task
+		}
+
+		// --- Assign methods ---
+
+		this.buildReport = (error: unknown, context?: ErrorContext): ErrorReport => {
+			const errorPayload = captureError(error)
+			const environment = collectEnvironment()
+			const app = collectApp(config.app)
+
+			const command = context
+				? { command: context.command, subcommand: context.subcommand, argv: context.argv }
+				: config.collect?.argv !== false
+					? collectCommand()
+					: undefined
+
+			const diagnostic = config.collect?.diagnosticReport ? collectDiagnostic() : undefined
+
+			return {
+				id: generateReportId(),
+				createdAt: new Date().toISOString(),
+				app,
+				error: errorPayload,
+				environment,
+				command,
+				diagnostic,
+				sanitizedFields: [],
+				metadata: context?.metadata,
+				status: 'pending',
+			}
+		}
+
+		this.sanitizeReport = (report: ErrorReport): ErrorReport => {
+			if (config.sanitize?.enabled === false) return report
+			return sanitize(report, config.sanitize?.customRules)
+		}
+
+		this.findMatches = async (report: ErrorReport): Promise<MatchResult> => {
+			return match(report, config)
+		}
+
+		this.buildDraft = (report: ErrorReport): DraftPayload => {
+			const titleFormatter = config.issue?.title
+			const title = formatTitle(report, titleFormatter)
+			const body = formatBody(report, { sections: config.issue?.sections })
+			return { title, body, labels: config.issue?.labels }
+		}
+
+		this.publish = async (draft: DraftPayload): Promise<PublishResult> => {
+			return corePublish(draft, { repo: config.repo, mode: config.mode })
+		}
+
+		this.reportError = async (error: unknown, context?: ErrorContext): Promise<ErrorReport> => {
+			if (typeof error === 'object' && error !== null && seenErrors.has(error)) {
+				return seenErrors.get(error)!
+			}
+
+			try {
+				const report = this.buildReport(error, context)
+				const sanitized = this.sanitizeReport(report)
+
+				if (config.store?.enabled !== false) {
+					await store.save(sanitized)
+				}
+
+				if (typeof error === 'object' && error !== null) {
+					seenErrors.set(error, sanitized)
+				}
+
+				return sanitized
+			} catch {
+				const minimal: ErrorReport = {
+					id: generateReportId(),
+					createdAt: new Date().toISOString(),
+					app: { name: config.app.name, version: config.app.version, runtime: 'unknown' },
+					error: { name: 'Error', message: String(error) },
+					environment: { os: 'unknown', arch: 'unknown', runtimeVersion: 'unknown' },
+					sanitizedFields: [],
+					status: 'pending',
+				}
+				if (typeof error === 'object' && error !== null) {
+					seenErrors.set(error, minimal)
+				}
+				return minimal
+			}
+		}
+
+		this.promptAndSubmit = async (report: ErrorReport): Promise<void> => {
+			const myEntry = registry.stack.find((e) => e.id === reporterId)
+			if (myEntry) {
+				const parent = registry.getParent(myEntry)
+				if (parent) {
+					switch (parent.childPolicy) {
+						case 'absorb':
+							await parent.reporter.receiveChildReport(report)
+							return
+						case 'silent':
+							return
+						case 'passthrough':
+							break
+					}
+				}
+			}
+
+			const matchResult =
+				config.dedupe?.enabled !== false
+					? await this.findMatches(report)
+					: { found: false, matches: [] }
+			if (matchResult.found) {
+				report = { ...report, matches: matchResult.matches }
+			}
+
+			const draft = this.buildDraft(report)
+
+			if (!presenter) {
+				const filePath =
+					config.store?.enabled !== false
+						? `${config.storeDir}/reports/${report.app.name}/${report.id}.json`
+						: undefined
+				handleNonInteractive(report, config.nonInteractive ?? 'save', filePath)
 				await store.updateStatus(report.app.name, report.id, 'dismissed')
 				return
 			}
 
-			switch (action.type) {
-				case 'view': {
-					const { openBrowser } = await import('@cluvo/core')
-					try {
-						await openBrowser(action.issue.url)
-					} catch {}
-					break
-				}
-				case 'react':
-					await addReaction(config.repo, action.issue.number)
-					break
-				case 'open':
-					await corePublish(draft, { repo: config.repo, mode: 'browser' })
-					await store.updateStatus(report.app.name, report.id, 'submitted')
-					break
-				case 'gh':
-					await corePublish(draft, { repo: config.repo, mode: 'gh' })
-					await store.updateStatus(report.app.name, report.id, 'submitted')
-					break
-				case 'save': {
-					const { saveReportFile } = await import('@cluvo/core')
-					const path = `${config.storeDir}/drafts/cluvo-report-${Date.now()}.md`
-					await saveReportFile(draft, path)
-					process.stdout.write(`Saved to ${path}\n`)
+			const authAvailable = await isAuthAvailable()
+			try {
+				const action = await presenter.prompt({
+					report,
+					draft,
+					authAvailable,
+					promptMessage: config.prompt?.message,
+					promptSpacing: config.prompt?.spacing,
+					branding: config.branding,
+				})
+
+				if (!action || action.type === 'cancel') {
 					await store.updateStatus(report.app.name, report.id, 'dismissed')
-					break
+					return
+				}
+
+				switch (action.type) {
+					case 'view': {
+						const { openBrowser } = await import('@cluvo/core')
+						try {
+							await openBrowser(action.issue.url)
+						} catch {}
+						break
+					}
+					case 'react':
+						await addReaction(config.repo, action.issue.number)
+						break
+					case 'open':
+						await corePublish(draft, { repo: config.repo, mode: 'browser' })
+						await store.updateStatus(report.app.name, report.id, 'submitted')
+						break
+					case 'gh':
+						await corePublish(draft, { repo: config.repo, mode: 'gh' })
+						await store.updateStatus(report.app.name, report.id, 'submitted')
+						break
+					case 'save': {
+						const { saveReportFile } = await import('@cluvo/core')
+						const path = `${config.storeDir}/drafts/cluvo-report-${Date.now()}.md`
+						await saveReportFile(draft, path)
+						process.stdout.write(`Saved to ${path}\n`)
+						await store.updateStatus(report.app.name, report.id, 'dismissed')
+						break
+					}
+				}
+			} catch (err) {
+				if (process.env.CLUVO_DEBUG) {
+					process.stderr.write(`[cluvo] presenter error: ${err}\n`)
 				}
 			}
-		} catch (err) {
-			// Presenter crashed -- swallow to avoid crashing host
-			if (process.env.CLUVO_DEBUG) {
-				process.stderr.write(`[cluvo] presenter error: ${err}\n`)
+		}
+
+		this.reportAndPrompt = async (error: unknown, context?: ErrorContext): Promise<void> => {
+			const report = await this.reportError(error, context)
+			await enqueuePrompt(() => this.promptAndSubmit(report))
+		}
+
+		this.wrap = async (fn: () => Promise<void>, opts?: WrapOptions): Promise<void> => {
+			try {
+				await fn()
+			} catch (error) {
+				await this.reportAndPrompt(error)
+				if (opts?.rethrow !== false) throw error
 			}
 		}
-	}
 
-	async function reportAndPrompt(error: unknown, context?: ErrorContext): Promise<void> {
-		const report = await reportError(error, context)
-		await enqueuePrompt(() => promptAndSubmit(report))
-	}
-
-	async function wrap(fn: () => Promise<void>, opts?: WrapOptions): Promise<void> {
-		try {
-			await fn()
-		} catch (error) {
-			await reportAndPrompt(error)
-			if (opts?.rethrow !== false) throw error
-		}
-	}
-
-	async function wrapCommand(fn: () => Promise<void>, opts?: WrapOptions): Promise<void> {
-		try {
-			await fn()
-		} catch (error) {
-			const context: ErrorContext = {
-				command: process.argv[2],
-				subcommand: process.argv[3],
-				argv: process.argv.slice(2),
-			}
-			const report = await reportError(error, context)
-			await enqueuePrompt(() => promptAndSubmit(report))
-			if (opts?.rethrow !== false) throw error
-		}
-	}
-
-	function setupGlobalHandlers(): () => void {
-		return installGlobalHandlersCore(async (payload, origin) => {
-			const report = await reportError(payload, { metadata: { origin } })
-			await promptAndSubmit(report)
-		})
-	}
-
-	function installExitHandlerFn(opts?: ExitHandlerOptions): () => void {
-		return createExitHandler({
-			getPendingReports: async () => {
-				const reports = await store.list(config.app.name)
-				return reports.filter((r) => r.status === 'pending')
-			},
-			onPending: async (pending) => {
-				for (const report of pending) {
-					await promptAndSubmit(report)
+		this.wrapCommand = async (fn: () => Promise<void>, opts?: WrapOptions): Promise<void> => {
+			try {
+				await fn()
+			} catch (error) {
+				const context: ErrorContext = {
+					command: process.argv[2],
+					subcommand: process.argv[3],
+					argv: process.argv.slice(2),
 				}
-			},
-			interceptProcessExit: opts?.interceptProcessExit,
-			timeout: opts?.timeout,
-		})
-	}
-
-	async function receiveChildReport(report: ErrorReport): Promise<void> {
-		if (config.store?.enabled !== false) {
-			await store.save(report)
+				const report = await this.reportError(error, context)
+				await enqueuePrompt(() => this.promptAndSubmit(report))
+				if (opts?.rethrow !== false) throw error
+			}
 		}
-		await enqueuePrompt(() => promptAndSubmit(report))
-	}
 
-	return {
-		reportError,
-		reportAndPrompt,
-		promptAndSubmit,
-		wrap,
-		wrapCommand,
-		installGlobalHandlers: setupGlobalHandlers,
-		installExitHandler: installExitHandlerFn,
-		buildReport,
-		sanitizeReport,
-		findMatches,
-		buildDraft,
-		publish: publishDraft,
-		receiveChildReport,
+		this.installGlobalHandlers = (): (() => void) => {
+			return installGlobalHandlersCore(async (payload, origin) => {
+				const report = await this.reportError(payload, { metadata: { origin } })
+				await this.promptAndSubmit(report)
+			})
+		}
+
+		this.installExitHandler = (opts?: ExitHandlerOptions): (() => void) => {
+			return createExitHandler({
+				getPendingReports: async () => {
+					const reports = await store.list(config.app.name)
+					return reports.filter((r) => r.status === 'pending')
+				},
+				onPending: async (pending) => {
+					for (const report of pending) {
+						await this.promptAndSubmit(report)
+					}
+				},
+				interceptProcessExit: opts?.interceptProcessExit,
+				timeout: opts?.timeout,
+			})
+		}
+
+		this.receiveChildReport = async (report: ErrorReport): Promise<void> => {
+			if (config.store?.enabled !== false) {
+				await store.save(report)
+			}
+			await enqueuePrompt(() => this.promptAndSubmit(report))
+		}
 	}
+}
+
+/** @deprecated Use `new Reporter(config)` instead. Kept for test compatibility. */
+export function createReporter(userConfig: ReporterConfig | InternalConfig): Reporter {
+	return new Reporter(userConfig)
 }
 
 async function addReaction(repo: string, issueNumber: number): Promise<void> {

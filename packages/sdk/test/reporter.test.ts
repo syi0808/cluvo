@@ -3,8 +3,8 @@ import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import type { InternalConfig } from '../src/config.js'
-import { createReporter } from '../src/reporter.js'
-import { resetRegistry } from '../src/registry.js'
+import { getRegistry, resetRegistry } from '../src/registry.js'
+import { Reporter, createReporter } from '../src/reporter.js'
 
 describe('createReporter', () => {
 	let storeDir: string
@@ -413,5 +413,112 @@ describe('createReporter', () => {
 		const cleanup = reporter.installExitHandler()
 		expect(typeof cleanup).toBe('function')
 		cleanup()
+	})
+})
+
+describe('no-op reporter (non-top-level new Reporter)', () => {
+	beforeEach(() => resetRegistry())
+	afterEach(() => resetRegistry())
+
+	// Named function + `new` → Bun preserves caller frame → detected as non-top-level
+	function createInsideFunction() {
+		return new Reporter({
+			repo: 'owner/repo',
+			app: { name: 'should-be-noop', version: '1.0.0' },
+			store: { enabled: false },
+		})
+	}
+
+	test('createReporter inside named function returns no-op reporter', () => {
+		const reporter = createInsideFunction()
+		expect(reporter).toBeDefined()
+		expect(reporter.reportError).toBeInstanceOf(Function)
+	})
+
+	test('no-op reportError returns noop report with id=noop', async () => {
+		const reporter = createInsideFunction()
+		const report = await reporter.reportError(new Error('test'))
+		expect(report.id).toBe('noop')
+		expect(report.status).toBe('dismissed')
+		expect(report.app.name).toBe('noop')
+	})
+
+	test('no-op reportAndPrompt completes without error', async () => {
+		const reporter = createInsideFunction()
+		await reporter.reportAndPrompt(new Error('test'))
+	})
+
+	test('no-op promptAndSubmit completes without error', async () => {
+		const reporter = createInsideFunction()
+		const report = await reporter.reportError(new Error('test'))
+		await reporter.promptAndSubmit(report)
+	})
+
+	test('no-op wrap executes the wrapped function', async () => {
+		const reporter = createInsideFunction()
+		let executed = false
+		await reporter.wrap(async () => {
+			executed = true
+		})
+		expect(executed).toBe(true)
+	})
+
+	test('no-op wrapCommand executes the wrapped function', async () => {
+		const reporter = createInsideFunction()
+		let executed = false
+		await reporter.wrapCommand(async () => {
+			executed = true
+		})
+		expect(executed).toBe(true)
+	})
+
+	test('no-op installGlobalHandlers returns cleanup function', () => {
+		const reporter = createInsideFunction()
+		const cleanup = reporter.installGlobalHandlers()
+		expect(typeof cleanup).toBe('function')
+		cleanup()
+	})
+
+	test('no-op installExitHandler returns cleanup function', () => {
+		const reporter = createInsideFunction()
+		const cleanup = reporter.installExitHandler()
+		expect(typeof cleanup).toBe('function')
+		cleanup()
+	})
+
+	test('no-op buildReport returns noop report', () => {
+		const reporter = createInsideFunction()
+		const report = reporter.buildReport(new Error('test'))
+		expect(report.id).toBe('noop')
+	})
+
+	test('no-op sanitizeReport returns input unchanged', () => {
+		const reporter = createInsideFunction()
+		const input = reporter.buildReport(new Error('test'))
+		const output = reporter.sanitizeReport(input)
+		expect(output).toBe(input)
+	})
+
+	test('no-op findMatches returns no matches', async () => {
+		const reporter = createInsideFunction()
+		const report = reporter.buildReport(new Error('test'))
+		const result = await reporter.findMatches(report)
+		expect(result.found).toBe(false)
+		expect(result.matches).toHaveLength(0)
+	})
+
+	test('no-op publish returns terminal method', async () => {
+		const reporter = createInsideFunction()
+		const report = reporter.buildReport(new Error('test'))
+		const draft = reporter.buildDraft(report)
+		const result = await reporter.publish(draft)
+		expect(result.method).toBe('terminal')
+	})
+
+	test('no-op reporter is not registered in registry', () => {
+		const registry = getRegistry()
+		const before = registry.stack.length
+		createInsideFunction()
+		expect(registry.stack.length).toBe(before)
 	})
 })
