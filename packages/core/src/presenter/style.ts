@@ -43,5 +43,6 @@ export function boldCyan(s: string): string {
 }
 
 export function stripAnsi(s: string): string {
+	// biome-ignore lint/suspicious/noControlCharactersInRegex: ANSI escape sequences intentionally start with ESC.
 	return s.replace(/\x1b\[[0-9;]*m/g, '')
 }

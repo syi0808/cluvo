@@ -1,5 +1,14 @@
 import { afterEach, describe, expect, test } from 'bun:test'
-import { bold, boldCyan, dim, green, isColorEnabled, setColorEnabled, stripAnsi, yellow } from '../src/presenter/style.js'
+import {
+	bold,
+	boldCyan,
+	dim,
+	green,
+	isColorEnabled,
+	setColorEnabled,
+	stripAnsi,
+	yellow,
+} from '../src/presenter/style.js'
 
 afterEach(() => setColorEnabled(false))
 

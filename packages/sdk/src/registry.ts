@@ -33,7 +33,8 @@ function resolveHierarchy(stack: RegisteredReporter[], parentMap: Map<string, st
 		// Reporters with deeper stack depth registered before this one
 		// are children of this reporter (post-order property)
 		while (pending.length > 0 && pending[pending.length - 1].depth > reporter.depth) {
-			const child = pending.pop()!
+			const child = pending.pop()
+			if (!child) break
 			parentMap.set(child.id, reporter.id)
 		}
 		pending.push(reporter)

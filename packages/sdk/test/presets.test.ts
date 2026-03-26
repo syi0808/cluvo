@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'bun:test'
 import { formatTitle } from '@cluvo/core'
-import { resolveConfig } from '../src/config.js'
 import type { InternalConfig } from '../src/config.js'
+import { resolveConfig } from '../src/config.js'
 
 describe('presets', () => {
 	const base: InternalConfig = {

@@ -1,9 +1,21 @@
 import { afterEach, describe, expect, mock, test } from 'bun:test'
+import type { ErrorReport } from '@cluvo/core'
 import { createExitHandler } from '../src/exit-handler.js'
 
 describe('createExitHandler', () => {
-	let listeners: Map<string, Function[]>
 	let originalExit: typeof process.exit
+
+	function makePendingReport(id: string): ErrorReport {
+		return {
+			id,
+			createdAt: new Date().toISOString(),
+			app: { name: 'test-app', version: '1.0.0', runtime: 'bun' },
+			error: { name: 'Error', message: `Pending report ${id}` },
+			environment: { os: 'darwin', arch: 'arm64', runtimeVersion: '1.0.0' },
+			sanitizedFields: [],
+			status: 'pending',
+		}
+	}
 
 	afterEach(() => {
 		// Restore any patched process.exit
@@ -20,10 +32,10 @@ describe('createExitHandler', () => {
 	})
 
 	test('calls onPending when pending reports exist at beforeExit', async () => {
-		const pendingReport = { id: 'test-1', status: 'pending' as const }
+		const pendingReport = makePendingReport('test-1')
 		const onPending = mock(async () => {})
 		const cleanup = createExitHandler({
-			getPendingReports: async () => [pendingReport as any],
+			getPendingReports: async () => [pendingReport],
 			onPending,
 		})
 
@@ -63,10 +75,10 @@ describe('createExitHandler', () => {
 	})
 
 	test('does not re-trigger onPending after beforeExit re-fires', async () => {
-		const pendingReport = { id: 'loop-1', status: 'pending' as const }
+		const pendingReport = makePendingReport('loop-1')
 		const onPending = mock(async () => {})
 		const cleanup = createExitHandler({
-			getPendingReports: async () => [pendingReport as any],
+			getPendingReports: async () => [pendingReport],
 			onPending,
 		})
 

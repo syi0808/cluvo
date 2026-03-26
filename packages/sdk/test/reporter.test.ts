@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import type { InternalConfig } from '../src/config.js'
 import { getRegistry, resetRegistry } from '../src/registry.js'
-import { Reporter, createReporter } from '../src/reporter.js'
+import { createReporter, Reporter } from '../src/reporter.js'
 
 describe('createReporter', () => {
 	let storeDir: string

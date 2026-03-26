@@ -1,4 +1,4 @@
-import type { ErrorPayload, ErrorReport, ReporterConfig } from '@cluvo/core'
+import type { ErrorPayload, ErrorReport } from '@cluvo/core'
 import type { InternalConfig } from '../../packages/sdk/src/config.js'
 
 class AppError extends Error {
@@ -22,8 +22,8 @@ export function createErrors() {
 	const withSensitive = new Error(
 		'Connection to postgres://admin:s3cretP4ss@db.internal:5432/prod failed with token ghp_abc123secret456',
 	)
-	const circular = new Error('Circular reference error')
-	;(circular as any).self = circular
+	const circular: Error & { self?: Error } = new Error('Circular reference error')
+	circular.self = circular
 
 	return {
 		simple,

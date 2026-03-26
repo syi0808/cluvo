@@ -25,7 +25,7 @@ export function renderSummary(report: ErrorReport, draft: DraftPayload): string 
 		lines.push(yellow('Similar issues found:'))
 		for (const match of report.matches.slice(0, 3)) {
 			const stateLabel = match.state === 'open' ? green('[open]') : dim('[closed]')
-			lines.push(`  ${dim('#' + match.number)} ${stateLabel}  ${match.title}`)
+			lines.push(`  ${dim(`#${match.number}`)} ${stateLabel}  ${match.title}`)
 		}
 	}
 

@@ -234,7 +234,8 @@ export class Reporter {
 
 		this.reportError = async (error: unknown, context?: ErrorContext): Promise<ErrorReport> => {
 			if (typeof error === 'object' && error !== null && seenErrors.has(error)) {
-				return seenErrors.get(error)!
+				const existingReport = seenErrors.get(error)
+				if (existingReport) return existingReport
 			}
 
 			try {

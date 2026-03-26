@@ -18,7 +18,9 @@ export class TerminalPresenter implements PresenterAdapter {
 	async prompt(context: PromptContext): Promise<PresenterAction | null> {
 		if (!process.stdout.isTTY) return null
 
-		const write = isStdoutPatched() ? originalStdoutWrite : process.stdout.write.bind(process.stdout)
+		const write = isStdoutPatched()
+			? originalStdoutWrite
+			: process.stdout.write.bind(process.stdout)
 		const stdin = originalStdin
 
 		if (isStdoutPatched()) {

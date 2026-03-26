@@ -108,7 +108,7 @@ describe('nested reporters', () => {
 
 	test('absorb: child error forwarded to parent', async () => {
 		const parentPrompted = mock(
-			async (ctx: PromptContext) => ({ type: 'cancel' }) as PresenterAction,
+			async (_ctx: PromptContext) => ({ type: 'cancel' }) as PresenterAction,
 		)
 		const parentPresenter: PresenterAdapter = { prompt: parentPrompted }
 
@@ -144,7 +144,7 @@ describe('nested reporters', () => {
 
 	test('passthrough: child uses own presenter', async () => {
 		const childPrompted = mock(
-			async (ctx: PromptContext) => ({ type: 'cancel' }) as PresenterAction,
+			async (_ctx: PromptContext) => ({ type: 'cancel' }) as PresenterAction,
 		)
 		const childPresenter: PresenterAdapter = { prompt: childPrompted }
 

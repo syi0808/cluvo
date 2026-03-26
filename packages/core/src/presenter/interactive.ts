@@ -1,4 +1,4 @@
-import type { DraftPayload, ErrorReport, ExistingIssue, PresenterAction, ReporterConfig } from '../types.js'
+import type { DraftPayload, ErrorReport, PresenterAction, ReporterConfig } from '../types.js'
 import { renderDetails, renderPromptMessage, renderSummary } from './render.js'
 import { boldCyan } from './style.js'
 

@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, mock, test } from 'bun:test'
+import { describe, expect, test } from 'bun:test'
 import type { PromptContext } from '@cluvo/core'
 
 // We need to test the module-level capture of original stdout
@@ -41,7 +41,7 @@ describe('TerminalPresenter', () => {
 		expect(isStdoutPatched()).toBe(false)
 
 		const original = process.stdout.write
-		process.stdout.write = (() => true) as any
+		process.stdout.write = (() => true) as typeof process.stdout.write
 		expect(isStdoutPatched()).toBe(true)
 		process.stdout.write = original
 	})

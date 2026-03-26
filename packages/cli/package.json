@@ -5,7 +5,9 @@
 	"bin": {
 		"cluvo": "./dist/bin.cjs"
 	},
-	"files": ["dist/"],
+	"files": [
+		"dist/"
+	],
 	"dependencies": {
 		"@cluvo/core": "workspace:*",
 		"@cluvo/sdk": "workspace:*"
