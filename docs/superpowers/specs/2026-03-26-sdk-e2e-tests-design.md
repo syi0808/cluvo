@@ -63,6 +63,7 @@ SDK API 레벨에서 mock presenter/fetch로 빠르게 검증한 뒤, subprocess
 - **파일시스템**: 각 테스트마다 `mkdtemp()`으로 격리된 store 디렉토리 생성, `_storeDir` 옵션으로 주입
 - **TTY**: subprocess 테스트에서는 pipe로 실행하므로 자연스럽게 non-interactive
 - **환경변수**: 환경 fixture preset으로 제어
+- **Subprocess에서의 fetch mock**: `runScript()`가 생성하는 인라인 스크립트 상단에 `globalThis.fetch = createMockFetch(...)` 코드를 삽입. mock-fetch 헬퍼를 스크립트 내에서 import하거나, `runScript()`가 mock 설정 코드를 자동으로 prepend하는 옵션을 제공
 
 ## Shared Helpers
 
