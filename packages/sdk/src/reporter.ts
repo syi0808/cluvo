@@ -212,6 +212,7 @@ export function createReporter(userConfig: ReporterConfig | InternalConfig): Rep
 					? `${config.storeDir}/reports/${report.app.name}/${report.id}.json`
 					: undefined
 			handleNonInteractive(report, config.nonInteractive ?? 'save', filePath)
+			await store.updateStatus(report.app.name, report.id, 'dismissed')
 			return
 		}
 

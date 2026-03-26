@@ -236,6 +236,26 @@ describe('createReporter', () => {
 		await reporter.promptAndSubmit(report)
 	})
 
+	test('promptAndSubmit sets status to dismissed in non-interactive mode', async () => {
+		const reporter = createReporter({
+			repo: 'owner/repo',
+			app: { name: 'nonint-test', version: '1.0.0' },
+			interactive: 'never',
+			nonInteractive: 'silent',
+			store: { enabled: true },
+			dedupe: { enabled: false },
+			_storeDir: storeDir,
+		} satisfies InternalConfig)
+
+		const report = await reporter.reportError(new Error('non-interactive'))
+		await reporter.promptAndSubmit(report)
+
+		const { Store } = await import('@cluvo/core')
+		const store = new Store(storeDir)
+		const loaded = await store.load('nonint-test', report.id)
+		expect(loaded?.status).toBe('dismissed')
+	})
+
 	// --- New tests for Task 7 ---
 
 	test('reporter exposes new API methods', () => {
