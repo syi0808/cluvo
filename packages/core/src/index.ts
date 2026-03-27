@@ -19,10 +19,14 @@ export { match, normalizeQuery, searchIssues } from './matcher/index.js'
 export {
 	boldCyan,
 	handleNonInteractive,
+	promptAction,
 	promptUser,
+	readKey,
+	readYesNo,
 	renderDetails,
 	renderPromptMessage,
 	renderSummary,
+	type WriteFn,
 } from './presenter/index.js'
 export type { PublishOptions, PublishResult } from './publisher/index.js'
 // Publisher

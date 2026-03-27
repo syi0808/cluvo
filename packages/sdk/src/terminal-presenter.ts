@@ -1,5 +1,5 @@
-import type { PresenterAction, PresenterAdapter, PromptContext } from '@cluvo/core'
-import { boldCyan, renderDetails, renderPromptMessage, renderSummary } from '@cluvo/core'
+import type { PresenterAction, PresenterAdapter, PromptContext, WriteFn } from '@cluvo/core'
+import { promptAction, readYesNo, renderPromptMessage, renderSummary } from '@cluvo/core'
 
 // Capture at module load time — before TUI frameworks can patch
 const originalStdoutWriteRef = process.stdout.write // unbound, for comparison
@@ -20,7 +20,7 @@ export class TerminalPresenter implements PresenterAdapter {
 
 		const write = isStdoutPatched()
 			? originalStdoutWrite
-			: process.stdout.write.bind(process.stdout)
+			: (process.stdout.write.bind(process.stdout) as WriteFn)
 		const stdin = originalStdin
 
 		if (isStdoutPatched()) {
@@ -43,88 +43,6 @@ export class TerminalPresenter implements PresenterAdapter {
 
 		write(`\n${renderSummary(context.report, context.draft)}\n\n`)
 
-		return await promptAction(context, stdin, write)
+		return await promptAction(context.report, context.draft, context.authAvailable, stdin, write)
 	}
-}
-
-type WriteFn = (chunk: string) => boolean
-
-async function promptAction(
-	context: PromptContext,
-	stdin: typeof process.stdin,
-	write: WriteFn,
-): Promise<PresenterAction> {
-	const hasMatches = (context.report.matches?.length ?? 0) > 0
-
-	const options: string[] = []
-	if (hasMatches) {
-		options.push(`${boldCyan('[v]')} View similar issue`)
-		if (context.authAvailable) options.push(`${boldCyan('[r]')} React to issue`)
-	}
-	options.push(`${boldCyan('[o]')} Open in browser`)
-	options.push(`${boldCyan('[g]')} Create via gh`)
-	options.push(`${boldCyan('[s]')} Save as markdown`)
-	options.push(`${boldCyan('[d]')} Details`)
-	options.push(`${boldCyan('[c]')} Cancel`)
-
-	write(`${options.join('  ')}\n`)
-
-	const key = await readKey(stdin, write)
-
-	switch (key) {
-		case 'v': {
-			const issue = context.report.matches?.[0]
-			return issue ? { type: 'view', issue } : await promptAction(context, stdin, write)
-		}
-		case 'r': {
-			const issue = context.report.matches?.[0]
-			return issue ? { type: 'react', issue } : await promptAction(context, stdin, write)
-		}
-		case 'o':
-			return { type: 'open' }
-		case 'g':
-			return { type: 'gh' }
-		case 's':
-			return { type: 'save' }
-		case 'c':
-			return { type: 'cancel' }
-		case 'd': {
-			write(`\n${renderDetails(context.draft)}\n\n`)
-			return await promptAction(context, stdin, write)
-		}
-		default:
-			return { type: 'cancel' }
-	}
-}
-
-function readYesNo(stdin: typeof process.stdin, write: WriteFn): Promise<boolean> {
-	return new Promise((resolve) => {
-		if (!stdin.isTTY) {
-			resolve(false)
-			return
-		}
-		stdin.setRawMode(true)
-		stdin.resume()
-		stdin.once('data', (data) => {
-			stdin.setRawMode(false)
-			stdin.pause()
-			const char = data.toString().trim().toLowerCase()
-			write(char === 'n' ? 'n\n' : 'Y\n')
-			resolve(char !== 'n')
-		})
-	})
-}
-
-function readKey(stdin: typeof process.stdin, write: WriteFn): Promise<string> {
-	return new Promise((resolve) => {
-		stdin.setRawMode(true)
-		stdin.resume()
-		stdin.once('data', (data) => {
-			stdin.setRawMode(false)
-			stdin.pause()
-			const char = data.toString().trim().toLowerCase()
-			write(`${char}\n`)
-			resolve(char)
-		})
-	})
 }

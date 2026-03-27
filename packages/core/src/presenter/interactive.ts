@@ -1,4 +1,6 @@
 import type { DraftPayload, ErrorReport, PresenterAction, ReporterConfig } from '../types.js'
+import type { WriteFn } from './io.js'
+import { readKey, readYesNo } from './io.js'
 import { renderDetails, renderPromptMessage, renderSummary } from './render.js'
 import { boldCyan } from './style.js'
 
@@ -9,20 +11,24 @@ export async function promptUser(
 	authAvailable: boolean,
 ): Promise<PresenterAction | null> {
 	const message = renderPromptMessage(config.prompt?.message, config.branding?.showName)
-	process.stdout.write(`\n${message} `)
+	const write = process.stdout.write.bind(process.stdout) as WriteFn
 
-	const confirmed = await readYesNo()
+	write(`\n${message} `)
+
+	const confirmed = await readYesNo(process.stdin, write)
 	if (!confirmed) return null
 
-	process.stdout.write(`\n${renderSummary(report, draft)}\n\n`)
+	write(`\n${renderSummary(report, draft)}\n\n`)
 
-	return await promptAction(report, draft, authAvailable)
+	return await promptAction(report, draft, authAvailable, process.stdin, write)
 }
 
-async function promptAction(
+export async function promptAction(
 	report: ErrorReport,
 	draft: DraftPayload,
 	authAvailable: boolean,
+	stdin: typeof process.stdin,
+	write: WriteFn,
 ): Promise<PresenterAction> {
 	const hasMatches = (report.matches?.length ?? 0) > 0
 
@@ -37,18 +43,18 @@ async function promptAction(
 	options.push(`${boldCyan('[d]')} Details`)
 	options.push(`${boldCyan('[c]')} Cancel`)
 
-	process.stdout.write(`${options.join('  ')}\n`)
+	write(`${options.join('  ')}\n`)
 
-	const key = await readKey()
+	const key = await readKey(stdin, write)
 
 	switch (key) {
 		case 'v': {
 			const issue = report.matches?.[0]
-			return issue ? { type: 'view', issue } : await promptAction(report, draft, authAvailable)
+			return issue ? { type: 'view', issue } : await promptAction(report, draft, authAvailable, stdin, write)
 		}
 		case 'r': {
 			const issue = report.matches?.[0]
-			return issue ? { type: 'react', issue } : await promptAction(report, draft, authAvailable)
+			return issue ? { type: 'react', issue } : await promptAction(report, draft, authAvailable, stdin, write)
 		}
 		case 'o':
 			return { type: 'open' }
@@ -59,42 +65,10 @@ async function promptAction(
 		case 'c':
 			return { type: 'cancel' }
 		case 'd': {
-			process.stdout.write(`\n${renderDetails(draft)}\n\n`)
-			return await promptAction(report, draft, authAvailable)
+			write(`\n${renderDetails(draft)}\n\n`)
+			return await promptAction(report, draft, authAvailable, stdin, write)
 		}
 		default:
 			return { type: 'cancel' }
 	}
-}
-
-function readYesNo(): Promise<boolean> {
-	return new Promise((resolve) => {
-		if (!process.stdin.isTTY) {
-			resolve(false)
-			return
-		}
-		process.stdin.setRawMode(true)
-		process.stdin.resume()
-		process.stdin.once('data', (data) => {
-			process.stdin.setRawMode(false)
-			process.stdin.pause()
-			const char = data.toString().trim().toLowerCase()
-			process.stdout.write(char === 'n' ? 'n\n' : 'Y\n')
-			resolve(char !== 'n')
-		})
-	})
-}
-
-function readKey(): Promise<string> {
-	return new Promise((resolve) => {
-		process.stdin.setRawMode(true)
-		process.stdin.resume()
-		process.stdin.once('data', (data) => {
-			process.stdin.setRawMode(false)
-			process.stdin.pause()
-			const char = data.toString().trim().toLowerCase()
-			process.stdout.write(`${char}\n`)
-			resolve(char)
-		})
-	})
 }
