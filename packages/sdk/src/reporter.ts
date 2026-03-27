@@ -24,6 +24,7 @@ import {
 	sanitize,
 	type WrapOptions,
 } from '@cluvo/core'
+import { handlePresenterAction } from './action-handler.js'
 import { type InternalConfig, resolveConfig } from './config.js'
 import { createExitHandler } from './exit-handler.js'
 import { PRESETS } from './presets.js'
@@ -316,39 +317,13 @@ export class Reporter {
 					branding: config.branding,
 				})
 
-				if (!action || action.type === 'cancel') {
-					await store.updateStatus(report.app.name, report.id, 'dismissed')
-					return
-				}
-
-				switch (action.type) {
-					case 'view': {
-						const { openBrowser } = await import('@cluvo/core')
-						try {
-							await openBrowser(action.issue.url)
-						} catch {}
-						break
-					}
-					case 'react':
-						await addReaction(config.repo, action.issue.number)
-						break
-					case 'open':
-						await corePublish(draft, { repo: config.repo, mode: 'browser' })
-						await store.updateStatus(report.app.name, report.id, 'submitted')
-						break
-					case 'gh':
-						await corePublish(draft, { repo: config.repo, mode: 'gh' })
-						await store.updateStatus(report.app.name, report.id, 'submitted')
-						break
-					case 'save': {
-						const { saveReportFile } = await import('@cluvo/core')
-						const path = `${config.storeDir}/drafts/cluvo-report-${Date.now()}.md`
-						await saveReportFile(draft, path)
-						process.stdout.write(`Saved to ${path}\n`)
-						await store.updateStatus(report.app.name, report.id, 'dismissed')
-						break
-					}
-				}
+				await handlePresenterAction(action, {
+					report,
+					draft,
+					repo: config.repo,
+					storeDir: config.storeDir,
+					store,
+				})
 			} catch (err) {
 				if (process.env.CLUVO_DEBUG) {
 					process.stderr.write(`[cluvo] presenter error: ${err}\n`)
@@ -420,34 +395,4 @@ export class Reporter {
 /** @deprecated Use `new Reporter(config)` instead. Kept for test compatibility. */
 export function createReporter(userConfig: ReporterConfig | InternalConfig): Reporter {
 	return new Reporter(userConfig)
-}
-
-async function addReaction(repo: string, issueNumber: number): Promise<void> {
-	const { checkGhAuth, getGithubToken } = await import('@cluvo/core')
-
-	if (await checkGhAuth()) {
-		const { execFile } = await import('node:child_process')
-		await new Promise<void>((resolve) => {
-			execFile(
-				'gh',
-				['api', `repos/${repo}/issues/${issueNumber}/reactions`, '-f', 'content=+1'],
-				() => resolve(),
-			)
-		})
-		return
-	}
-
-	const token = getGithubToken()
-	if (token) {
-		await fetch(`https://api.github.com/repos/${repo}/issues/${issueNumber}/reactions`, {
-			method: 'POST',
-			headers: {
-				Authorization: `Bearer ${token}`,
-				Accept: 'application/vnd.github.v3+json',
-				'Content-Type': 'application/json',
-				'User-Agent': 'cluvo',
-			},
-			body: JSON.stringify({ content: '+1' }),
-		})
-	}
 }
