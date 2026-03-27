@@ -1,8 +1,8 @@
 # Cluvo Architecture Documentation
 
-> **Cluvo** — A local-first bug reporting SDK for open-source CLIs/SDKs. Captures errors, sanitizes sensitive data, lets users review before submitting, and publishes GitHub issues.
+> **Cluvo**: A local-first bug reporting SDK for open-source CLIs/SDKs. Captures errors, sanitizes sensitive data, lets users review before submitting, and publishes GitHub issues.
 
-This document provides a comprehensive architectural overview of Cluvo, including monorepo structure, package dependencies, the core pipeline, design patterns, and data flows.
+This document covers Cluvo's architecture: monorepo structure, package dependencies, the core pipeline, design patterns, and data flows.
 
 ---
 
@@ -65,7 +65,7 @@ try {               new Reporter()    →  Collector       →  GitHub API
 ### Design Principles
 
 1. **Local-First**: Reports are stored locally before submission, allowing user review and control
-2. **Zero Core Dependencies**: `@cluvo/core` has no external runtime dependencies — embeddable anywhere
+2. **Zero Core Dependencies**: `@cluvo/core` has no external runtime dependencies, embeddable anywhere
 3. **Pre-Submission Sanitization**: Sensitive data (tokens, keys, paths, emails) is redacted before the user sees anything
 4. **Fallback Chain**: Publisher always succeeds by gracefully degrading: browser → gh CLI → GitHub API → local file
 5. **Interactive Auto-Detection**: TTY mode with raw-mode prompts; automatic fallback to non-interactive for CI/pipes
@@ -255,7 +255,7 @@ graph TD
     DIAGNOSTIC["diagnostic/"] --> TYPES
 ```
 
-Each module is independently importable and testable — no cross-module dependencies except shared types.
+Each module is independently importable and testable, with no cross-module dependencies except shared types.
 
 ---
 
@@ -441,9 +441,9 @@ Store(baseDir, maxReports = 100)
 ### Eviction Strategy
 
 When `maxReports` is exceeded, reports are evicted by priority:
-1. **Submitted** reports (already published) — evict first
-2. **Dismissed** reports (user rejected) — evict second
-3. **Pending** reports (awaiting action) — evict last
+1. **Submitted** reports (already published), evicted first
+2. **Dismissed** reports (user rejected), evicted second
+3. **Pending** reports (awaiting action), evicted last
 
 Within each priority tier, oldest reports are evicted first.
 
@@ -578,7 +578,7 @@ handleNonInteractive(report, mode, filePath?)
 
 ## Publisher System
 
-The publisher implements a fallback chain that always succeeds — worst case, the issue is saved as a local file.
+The publisher implements a fallback chain that always succeeds. Worst case, the issue is saved as a local file.
 
 ### Fallback Chain
 
@@ -984,7 +984,7 @@ await reporter.wrap(async () => {
 }, { rethrow: false })
 ```
 
-When the library is used inside a CLI that also has a Cluvo reporter, the registry automatically connects them — the library forwards its error to the CLI's presenter.
+When the library is used inside a CLI that also has a Cluvo reporter, the registry automatically connects them. The library forwards its error to the CLI's presenter.
 
 ### Pattern C: TUI App (Custom Presenter)
 
@@ -1157,7 +1157,7 @@ sequenceDiagram
 
 ### What the User Sees: Step by Step
 
-**Step 1 — Report Summary**
+**Step 1: Report Summary**
 
 ```
 ── Bug Report ────────────────────────────────
@@ -1172,7 +1172,7 @@ Command: deploy prod --force
 - Environment summarized on one line
 - Sanitization count shown (user knows data was cleaned)
 
-**Step 2 — Duplicate Matches** (if found)
+**Step 2: Duplicate Matches** (if found)
 
 ```
 Similar issues found:
@@ -1183,16 +1183,16 @@ Similar issues found:
 - Shows matching GitHub issues from the project's repo
 - Helps the user decide: submit new issue, or react to an existing one
 
-**Step 3 — Consent Prompt**
+**Step 3: Consent Prompt**
 
 ```
 Prepare a sanitized bug report? (Y/n) _
 ```
 
-- Default is Y (Enter key) — submitting is easy
-- User can decline with N — no data leaves their machine
+- Default is Y (Enter key), so submitting is easy
+- User can decline with N, and no data leaves their machine
 
-**Step 4 — Action Menu** (single-key input, raw mode)
+**Step 4: Action Menu** (single-key input, raw mode)
 
 ```
 [v] View details  [o] Open in browser  [g] Create via gh  [s] Save  [c] Cancel
@@ -1208,7 +1208,7 @@ Prepare a sanitized bug report? (Y/n) _
 | `s` | "Report saved to ~/.cluvo/reports/..." | Saved for later via `cluvo submit` |
 | `c` | (exits) | No action taken |
 
-**Step 5 — View Details** (when user presses `v`)
+**Step 5: View Details** (when user presses `v`)
 
 ```
 ## Summary

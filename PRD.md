@@ -70,7 +70,7 @@ Cluvo는 다음 포지션을 가진다.
 * **Privacy-safe by default**
 * **Maintainer-centric output**
 * **Zero-backend**
-* **GitHub issue workflow optimized**
+* **GitHub issue workflow focused**
 
 ### 3.3 핵심 철학
 
@@ -204,7 +204,7 @@ Cluvo는 단순 1인 사용자 제품이 아니라, **3자 관계 구조**를 �
 
 ## 6. 페르소나
 
-### Persona A — Solo OSS Maintainer
+### Persona A: Solo OSS Maintainer
 
 #### 기본 정보
 
@@ -233,7 +233,7 @@ Cluvo는 단순 1인 사용자 제품이 아니라, **3자 관계 구조**를 �
 
 ---
 
-### Persona B — CLI End User
+### Persona B: CLI End User
 
 #### 기본 정보
 
@@ -260,7 +260,7 @@ Cluvo는 단순 1인 사용자 제품이 아니라, **3자 관계 구조**를 �
 
 ---
 
-### Persona C — Team Maintainer / DX Engineer
+### Persona C: Team Maintainer / DX Engineer
 
 #### 기본 정보
 
@@ -331,7 +331,7 @@ Cluvo는 단순 1인 사용자 제품이 아니라, **3자 관계 구조**를 �
 
 ## 9. 핵심 사용자 시나리오
 
-### 시나리오 A — CLI 실행 중 예상치 못한 예외 발생
+### 시나리오 A: CLI 실행 중 예상치 못한 예외 발생
 
 1. 사용자가 CLI를 실행한다.
 2. 예외가 발생한다.
@@ -342,20 +342,20 @@ Cluvo는 단순 1인 사용자 제품이 아니라, **3자 관계 구조**를 �
 7. 브라우저 또는 `gh issue create`로 issue 초안이 생성된다.
 8. 사용자가 최종 제출한다.
 
-### 시나리오 B — Integrator가 명시적으로 에러 리포트 호출
+### 시나리오 B: Integrator가 명시적으로 에러 리포트 호출
 
 1. SDK 사용자 코드에서 `reportError(error, context)`를 호출한다.
 2. Cluvo가 structured report를 만든다.
 3. 사용자에게 preview 또는 저장 옵션을 제공한다.
 4. GitHub issue 초안 또는 markdown 파일이 생성된다.
 
-### 시나리오 C — 민감정보 우려가 있는 사용자
+### 시나리오 C: 민감정보 우려가 있는 사용자
 
 1. 사용자에게 수집 항목과 마스킹된 결과를 보여준다.
 2. 사용자는 일부 섹션을 제외하거나 취소할 수 있다.
 3. 확인 후 제출한다.
 
-### 시나리오 D — 네트워크/gh 사용이 어려운 환경
+### 시나리오 D: 네트워크/gh 사용이 어려운 환경
 
 1. issue 생성이 실패한다.
 2. Cluvo는 markdown 파일 저장 또는 터미널 preview를 fallback으로 제공한다.
@@ -398,7 +398,7 @@ Cluvo는 단순 1인 사용자 제품이 아니라, **3자 관계 구조**를 �
 
 ---
 
-## 11. PRD — 요구사항 명세
+## 11. PRD: 요구사항 명세
 
 ### 11.1 문서 목적
 

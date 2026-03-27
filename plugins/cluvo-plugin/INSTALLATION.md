@@ -29,5 +29,5 @@ Keep the directory structure unchanged after download.
 ## Usage notes
 
 - use the skills in order: `cluvo-setup` → `cluvo-find-handlers` → `cluvo-custom-config`
-- `cluvo-setup` is the entry point — the other skills require it to be run first
+- `cluvo-setup` is the entry point; the other skills require it to be run first
 - each skill is self-contained and guides you through the integration step by step

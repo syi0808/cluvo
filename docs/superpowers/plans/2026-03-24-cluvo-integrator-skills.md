@@ -4,7 +4,7 @@
 
 **Goal:** Create 3 Claude Code skills that guide external developers through integrating `@cluvo/sdk` into their CLI/SDK projects.
 
-**Architecture:** Each skill is a standalone markdown file (`SKILL.md`) in `.claude/skills/<skill-name>/`. Skills contain YAML frontmatter (name, description) and procedural instructions with embedded Cluvo API reference. No shared files between skills — each is self-contained.
+**Architecture:** Each skill is a standalone markdown file (`SKILL.md`) in `.claude/skills/<skill-name>/`. Skills contain YAML frontmatter (name, description) and procedural instructions with embedded Cluvo API reference. No shared files between skills; each is self-contained.
 
 **Tech Stack:** Claude Code skills (markdown), YAML frontmatter
 

@@ -63,7 +63,7 @@ If `repository` is not set, ask the user for the GitHub `owner/repo`.
 
 ### 6. Insert integration code
 
-**For CLI tools** (default — `preset: 'cli'`):
+**For CLI tools** (default, `preset: 'cli'`):
 
 ```typescript
 import { Reporter } from '@cluvo/sdk'
@@ -99,7 +99,7 @@ export async function riskyOperation() {
 **Important notes:**
 - `wrapCommand` catches errors, extracts `process.argv` context, runs the sanitize → prompt → submit pipeline, then **re-throws** the original error (unless `{ rethrow: false }` is passed).
 - `wrap` is like `wrapCommand` but without CLI-specific `process.argv` context extraction.
-- The `'sdk'` preset disables interactive prompting and argv collection — errors are stored locally and can be forwarded to a parent CLI reporter via the registry.
+- The `'sdk'` preset disables interactive prompting and argv collection. Errors are stored locally and can be forwarded to a parent CLI reporter via the registry.
 - Preserve existing imports and module structure. Only wrap the main execution logic.
 - If the entry point uses CommonJS (`require`), use `require('@cluvo/sdk')` instead.
 

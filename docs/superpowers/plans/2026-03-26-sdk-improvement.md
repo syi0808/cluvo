@@ -2,9 +2,9 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Transform Cluvo from a CLI-only SDK into a universal SDK supporting CLI, SDK/library, and TUI environments with presenter adapters, presets, global reporter registry, and new convenience APIs.
+**Goal:** Expand Cluvo from a CLI-only SDK to support CLI, SDK/library, and TUI environments by adding presenter adapters, presets, a global reporter registry, and new convenience APIs.
 
-**Architecture:** Layered approach — core stays environment-agnostic with new types, SDK layer gets presets, presenter adapter, global registry, and new API methods. Built-in terminal presenter moves from core to SDK with TUI fallback.
+**Architecture:** Layered approach: core stays environment-agnostic with new types, SDK layer gets presets, presenter adapter, global registry, and new API methods. Built-in terminal presenter moves from core to SDK with TUI fallback.
 
 **Tech Stack:** TypeScript (ES2022), Bun test runner, Bun workspaces monorepo
 
@@ -20,7 +20,7 @@
 |------|--------|----------------|
 | `src/types.ts` | Modify | Add `PresenterAdapter`, `PromptContext`, `PresenterAction` (discriminated union), `'prompted'` status, `WrapOptions`, `ExitHandlerOptions`, preset type |
 | `src/collector/collect-environment.ts` | Modify | Fix Bun runtime version detection |
-| `src/presenter/interactive.ts` | Modify | Remove old `PresenterAction` interface (moved to types.ts), update `promptUser` to use new types. No TerminalPresenter class here — that lives in SDK. |
+| `src/presenter/interactive.ts` | Modify | Remove old `PresenterAction` interface (moved to types.ts), update `promptUser` to use new types. No TerminalPresenter class here (that lives in SDK). |
 | `src/index.ts` | Modify | Export new types |
 | `test/collector.test.ts` | Modify | Add Bun version detection tests |
 | `test/sections.test.ts` | Modify | Add Bun runtime format test |
@@ -243,7 +243,7 @@ Import it from types.ts instead:
 import type { DraftPayload, ErrorReport, ExistingIssue, PresenterAction, ReporterConfig } from '../types.js'
 ```
 
-The `promptUser` function signature and body remain unchanged. It still uses `process.stdout`/`process.stdin` directly. **No TerminalPresenter class in core** — that class lives in the SDK (Task 7).
+The `promptUser` function signature and body remain unchanged. It still uses `process.stdout`/`process.stdin` directly. **No TerminalPresenter class in core** (that class lives in the SDK, Task 7).
 
 Update `view` and `react` return values to include guard checks:
 
@@ -1215,14 +1215,14 @@ Expected: FAIL — new methods don't exist yet
 Full rewrite of `packages/sdk/src/reporter.ts`:
 
 The key changes:
-1. Add `reportAndPrompt` — combines `reportError` + `promptAndSubmit`
-2. Add `wrap(fn, opts?)` — try/catch + `reportAndPrompt` + optional rethrow
+1. Add `reportAndPrompt`: combines `reportError` + `promptAndSubmit`
+2. Add `wrap(fn, opts?)`: try/catch + `reportAndPrompt` + optional rethrow
 3. Update `wrapCommand` to accept `WrapOptions` and delegate to `wrap`
-4. Add `installExitHandler` — delegates to `createExitHandler`
-5. Add `receiveChildReport` — stores child report + optional prompt
+4. Add `installExitHandler`: delegates to `createExitHandler`
+5. Add `receiveChildReport`: stores child report + optional prompt
 6. Add error dedup via `WeakMap<object, ErrorReport>`
-7. Integrate presenter adapter — use `config.presenter` or resolve from preset
-8. Integrate registry — register on create, unregister on cleanup
+7. Integrate presenter adapter: use `config.presenter` or resolve from preset
+8. Integrate registry: register on create, unregister on cleanup
 9. Add prompt queue for serialization
 10. Update `promptAndSubmit` to set `'prompted'` status
 
@@ -1638,12 +1638,12 @@ Read `README.md` to understand current structure.
 - [ ] **Step 2: Update README.md**
 
 Key additions:
-1. **Getting Started** — split into CLI, SDK, TUI subsections
-2. **New API reference** — `reportAndPrompt`, `wrap`, `installExitHandler`, `receiveChildReport`
-3. **Presets** — CLI vs SDK table, override examples
-4. **Presenter Adapter** — interface docs, custom presenter example
-5. **Nested Usage** — registry concept, childPolicy options, multi-layer example
-6. **Configuration** — new fields: `preset`, `presenter`, `childPolicy`
+1. **Getting Started**: split into CLI, SDK, TUI subsections
+2. **New API reference**: `reportAndPrompt`, `wrap`, `installExitHandler`, `receiveChildReport`
+3. **Presets**: CLI vs SDK table, override examples
+4. **Presenter Adapter**: interface docs, custom presenter example
+5. **Nested Usage**: registry concept, childPolicy options, multi-layer example
+6. **Configuration**: new fields: `preset`, `presenter`, `childPolicy`
 
 - [ ] **Step 3: Read current ARCHITECTURE.md section headers**
 
@@ -1652,9 +1652,9 @@ Use a haiku subagent to read ARCHITECTURE.md and identify sections to update.
 - [ ] **Step 4: Update ARCHITECTURE.md**
 
 Update sections:
-1. **Presenter System** — add adapter pattern, built-in vs custom
-2. **SDK Package Architecture** — add preset system, registry, new APIs
-3. **Integration Patterns** — add CLI, SDK, TUI, nested patterns
+1. **Presenter System**: add adapter pattern, built-in vs custom
+2. **SDK Package Architecture**: add preset system, registry, new APIs
+3. **Integration Patterns**: add CLI, SDK, TUI, nested patterns
 
 - [ ] **Step 5: Update CLAUDE.md**
 

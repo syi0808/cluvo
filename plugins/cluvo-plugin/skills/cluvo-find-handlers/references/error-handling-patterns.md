@@ -41,7 +41,7 @@ await cluvo.wrap(async () => {
 }, { rethrow: false })
 ```
 
-`wrapCommand` is the CLI variant — automatically captures `process.argv` as context:
+`wrapCommand` is the CLI variant that automatically captures `process.argv` as context:
 
 ```typescript
 await cluvo.wrapCommand(async () => {
@@ -65,8 +65,8 @@ try {
 }
 ```
 
-- `reportError` never throws — it always returns a report (even on internal failure)
-- Deduplicates automatically — same error object returns the cached report
+- `reportError` never throws. It always returns a report (even on internal failure)
+- Deduplicates automatically: same error object returns the cached report
 - Populate `command` and `subcommand` from context if available
 - Add relevant `metadata` if the catch block has useful context
 

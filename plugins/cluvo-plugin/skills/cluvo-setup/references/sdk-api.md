@@ -27,13 +27,13 @@ Creates a reporter instance. Uses `new` to prevent Bun's tail-call optimization 
 
 Wraps an async function with CLI context. Captures `process.argv`, runs sanitize → prompt → submit pipeline on error. Re-throws by default.
 
-- `opts.rethrow` — Re-throw after reporting (default: `true`)
+- `opts.rethrow`: re-throw after reporting (default: `true`)
 
 ### `reporter.wrap(fn, opts?): Promise<void>`
 
 Like `wrapCommand` but without CLI-specific `process.argv` extraction. Ideal for SDK/library code.
 
-- `opts.rethrow` — Re-throw after reporting (default: `true`)
+- `opts.rethrow`: re-throw after reporting (default: `true`)
 
 ### `reporter.reportAndPrompt(error, context?): Promise<void>`
 
@@ -49,12 +49,12 @@ Registers `uncaughtException` and `unhandledRejection` listeners. Returns an uns
 
 Catches unreported errors at process exit via `beforeExit`. Returns a cleanup function.
 
-- `opts.interceptProcessExit` — Also monkey-patch `process.exit` (opt-in, default: `false`)
-- `opts.timeout` — Max time to wait for prompt at exit (default: `30000` ms)
+- `opts.interceptProcessExit`: also monkey-patch `process.exit` (opt-in, default: `false`)
+- `opts.timeout`: max time to wait for prompt at exit (default: `30000` ms)
 
 ### `reporter.reportError(error, context?): Promise<ErrorReport>`
 
-Never throws. Returns a report even on internal failure. Deduplicates — same error object returns the cached report.
+Never throws. Returns a report even on internal failure. Deduplicates: same error object returns the cached report.
 
 ### `reporter.promptAndSubmit(report): Promise<void>`
 

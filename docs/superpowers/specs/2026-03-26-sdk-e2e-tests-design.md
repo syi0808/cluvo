@@ -194,7 +194,7 @@ function createTestPresenter(
 | 2 | user selects 'react' on existing issue | reaction attempted, no new issue created |
 | 3 | user selects 'view' on existing issue | issue URL opened, no new issue |
 | 4 | no matches found | matches is empty array, normal publish proceeds |
-| 5 | search API failure (network error) | graceful — matches as empty, flow continues |
+| 5 | search API failure (network error) | graceful: matches treated as empty, flow continues |
 | 6 | dedupe disabled | search not called, matches undefined |
 | 7 | searchDiscussions: true | discussions included in query |
 

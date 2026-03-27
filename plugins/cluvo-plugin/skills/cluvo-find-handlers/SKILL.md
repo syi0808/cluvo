@@ -31,16 +31,16 @@ Search for `new Reporter(` in the codebase to find the existing reporter instanc
 
 Search the project source files for these patterns:
 
-**Category A — Existing try/catch blocks:**
+**Category A: Existing try/catch blocks:**
 - `try { ... } catch` blocks that handle errors but don't report them to Cluvo
 - Especially in command handlers, API routes, or service entry points
 
-**Category B — Process-level error handlers:**
+**Category B: Process-level error handlers:**
 - `process.on('uncaughtException', ...)`
 - `process.on('unhandledRejection', ...)`
 - Check if these exist. If not, note their absence.
 
-**Category C — Throw/reject sites:**
+**Category C: Throw/reject sites:**
 - Functions that `throw` custom errors or call `Promise.reject`
 - These indicate where errors originate (useful context, not direct integration points)
 

@@ -11,13 +11,13 @@ No server, no dashboard, no telemetry. All processing happens on the user's mach
 
 ## Features
 
-- **Automatic Error Capture** — Collects error, stack trace, OS, runtime, architecture, command args, and git SHA
-- **On-Device Sanitization** — Strips tokens, passwords, API keys, emails, and home paths before the user ever sees a report
-- **Duplicate Detection** — Searches existing GitHub issues and discussions before creating new ones
-- **User Consent First** — Interactive TTY prompts let users review and decide what happens with their data
-- **Zero-Server Architecture** — No backend, no sign-up, no API keys required to get started
-- **Fallback Publishing** — Browser → `gh` CLI → GitHub API → local file export — always succeeds
-- **Local Report Storage** — Stores reports at `~/.cluvo/reports/` for later review, submission, or cleanup
+- **Automatic Error Capture**: Collects error, stack trace, OS, runtime, architecture, command args, and git SHA
+- **On-Device Sanitization**: Strips tokens, passwords, API keys, emails, and home paths before the user ever sees a report
+- **Duplicate Detection**: Searches existing GitHub issues and discussions before creating new ones
+- **User Consent First**: Interactive TTY prompts let users review and decide what happens with their data
+- **Zero-Server Architecture**: No backend, no sign-up, no API keys required to get started
+- **Fallback Publishing**: Browser → `gh` CLI → GitHub API → local file export, always succeeds
+- **Local Report Storage**: Stores reports at `~/.cluvo/reports/` for later review, submission, or cleanup
 
 ## Getting Started
 
@@ -69,7 +69,7 @@ try {
 
 ### SDK / library
 
-Use the `sdk` preset when integrating into a library. It disables the presenter and sets `interactive: 'never'` — errors are stored locally and the parent CLI (if any) handles prompting.
+Use the `sdk` preset when integrating into a library. It disables the presenter and sets `interactive: 'never'`, so errors are stored locally and the parent CLI (if any) handles prompting.
 
 ```ts
 import { Reporter } from '@cluvo/sdk'
@@ -288,7 +288,7 @@ new Reporter({ ..., presenter: null })
 
 ## Nested Usage
 
-When a CLI app depends on an SDK library that also uses Cluvo, the global reporter registry automatically connects them. The library's reporter forwards errors to the CLI's presenter — no manual wiring needed.
+When a CLI app depends on an SDK library that also uses Cluvo, the global reporter registry automatically connects them. The library's reporter forwards errors to the CLI's presenter, no manual wiring needed.
 
 **CLI app:**
 ```ts
@@ -448,4 +448,4 @@ This project is licensed under the Apache License 2.0. See the [LICENSE](LICENSE
 
 ## Author
 
-**Yein Sung** — [GitHub](https://github.com/yeinsung)
+**Yein Sung**, [GitHub](https://github.com/yeinsung)

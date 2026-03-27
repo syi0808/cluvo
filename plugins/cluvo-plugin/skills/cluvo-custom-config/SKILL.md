@@ -62,9 +62,9 @@ preset: 'cli'  // 'cli' | 'sdk'
 | `'cli'` (default) | `'auto'` | Yes | Includes `command` | `TerminalPresenter` |
 | `'sdk'` | `'never'` | No | Excludes `command` | `null` |
 
-Preset values serve as defaults — any explicit config overrides them.
+Preset values serve as defaults. Any explicit config overrides them.
 
-#### Presenter — Custom Adapter
+#### Presenter: Custom Adapter
 
 ```typescript
 import type { PresenterAdapter, PromptContext, PresenterAction } from '@cluvo/core'
@@ -84,7 +84,7 @@ const cluvo = new Reporter({
 
 Set `presenter: null` to disable interactive prompts entirely (non-interactive fallback only).
 
-#### Child Policy — Nested Reporters
+#### Child Policy: Nested Reporters
 
 ```typescript
 childPolicy: 'absorb'  // 'absorb' | 'passthrough' | 'silent'
@@ -96,7 +96,7 @@ childPolicy: 'absorb'  // 'absorb' | 'passthrough' | 'silent'
 | `passthrough` (default) | Child handles its own prompt normally. |
 | `silent` | Child stores only, no prompt. |
 
-#### Sanitize — Custom Rules
+#### Sanitize: Custom Rules
 
 Add custom `SanitizeRule` entries to catch project-specific secrets:
 
@@ -124,7 +124,7 @@ const cluvo = new Reporter({
 
 **Note:** Sensitive CLI argv (e.g., `--token`, `--password`) are sanitized by a separate mechanism (`ARGV_SENSITIVE_FLAGS`) independent of `SanitizeRule` pipeline.
 
-#### Issue — Labels, Title, Sections
+#### Issue: Labels, Title, Sections
 
 ```typescript
 const cluvo = new Reporter({

@@ -1,4 +1,4 @@
-# Cluvo Plugin — Consumer Guide
+# Cluvo Plugin: Consumer Guide
 
 ## Prerequisites
 
@@ -15,9 +15,9 @@
 
 ## Recommended order
 
-1. `/cluvo-setup` — always start here
-2. `/cluvo-find-handlers` — add error reporting at specific try/catch locations
-3. `/cluvo-custom-config` — tune configuration to match your project
+1. `/cluvo-setup` (always start here)
+2. `/cluvo-find-handlers` (add error reporting at specific try/catch locations)
+3. `/cluvo-custom-config` (tune configuration to match your project)
 
 ## Required permissions
 

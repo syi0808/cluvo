@@ -127,7 +127,7 @@ Sensitive CLI arguments are sanitized by a separate mechanism, independent of th
 | `issue.sections` | Includes `command` | Excludes `command` |
 | Presenter | `TerminalPresenter` | `null` |
 
-Preset values are defaults — any explicit config field overrides the preset.
+Preset values are defaults. Any explicit config field overrides the preset.
 
 ## Supporting Types
 

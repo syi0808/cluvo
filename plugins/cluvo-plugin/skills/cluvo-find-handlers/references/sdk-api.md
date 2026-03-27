@@ -24,17 +24,17 @@ Combines `reportError` + `promptAndSubmit` in one call. The simplest way to repo
 
 Wraps an async function. On error: capture → sanitize → prompt → submit. Re-throws by default.
 
-- `opts.rethrow` — Re-throw after reporting (default: `true`)
+- `opts.rethrow`: re-throw after reporting (default: `true`)
 
 ### `reporter.wrapCommand(fn, opts?): Promise<void>`
 
 Like `wrap` but captures `process.argv` as CLI context. Re-throws by default.
 
-- `opts.rethrow` — Re-throw after reporting (default: `true`)
+- `opts.rethrow`: re-throw after reporting (default: `true`)
 
 ### `reporter.reportError(error, context?): Promise<ErrorReport>`
 
-Never throws. Returns a report even on internal failure. Deduplicates — same error object returns the cached report.
+Never throws. Returns a report even on internal failure. Deduplicates: same error object returns the cached report.
 
 **ErrorContext:**
 
@@ -57,8 +57,8 @@ Catches `uncaughtException` and `unhandledRejection`. Returns unsubscribe functi
 
 Catches unreported (pending) errors at process exit via `beforeExit`. Returns cleanup function.
 
-- `opts.interceptProcessExit` — Also monkey-patch `process.exit` (opt-in, default: `false`)
-- `opts.timeout` — Max wait time at exit (default: `30000` ms)
+- `opts.interceptProcessExit`: also monkey-patch `process.exit` (opt-in, default: `false`)
+- `opts.timeout`: max wait time at exit (default: `30000` ms)
 
 ### `reporter.receiveChildReport(report): Promise<void>`
 

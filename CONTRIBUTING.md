@@ -4,7 +4,7 @@ Thank you for your interest in contributing to Cluvo. This guide explains how to
 
 ## Code of Conduct
 
-Please be respectful and constructive in all interactions. We are committed to providing a welcoming and inclusive experience for everyone.
+Please be respectful and constructive in all interactions. We want this to be a welcoming and inclusive space for everyone.
 
 ## How to Contribute
 
@@ -17,7 +17,7 @@ Please be respectful and constructive in all interactions. We are committed to p
    - Your environment (OS, Node.js/Bun version, package version)
    - Error output or stack trace if applicable
 
-### Suggesting Enhancements
+### Suggesting Improvements
 
 1. Search [existing issues](../../issues) for similar suggestions
 2. Open a new issue describing:
@@ -30,7 +30,7 @@ Please be respectful and constructive in all interactions. We are committed to p
 1. Fork the repository
 2. Create a feature branch from `main` (`git checkout -b feature/your-feature`)
 3. Make your changes
-4. Add a changeset (`pubm changesets add`) — every PR with runtime changes must include one
+4. Add a changeset (`pubm changesets add`). Every PR with runtime changes must include one
 5. Ensure all checks pass (lint, typecheck, tests)
 6. Push to your fork and open a pull request
 7. Fill in the PR description explaining what changed and why
@@ -73,9 +73,9 @@ This is a Bun workspaces monorepo with three packages:
 
 ```
 packages/
-├── core/   @cluvo/core — Zero-dependency pipeline modules
-├── sdk/    @cluvo/sdk  — High-level Reporter class API
-└── cli/    @cluvo/cli  — CLI for managing stored reports
+├── core/   @cluvo/core: zero-dependency pipeline modules
+├── sdk/    @cluvo/sdk:  high-level Reporter class API
+└── cli/    @cluvo/cli:  CLI for managing stored reports
 ```
 
 Dependencies flow linearly: **core → sdk → cli**.
@@ -121,9 +121,9 @@ pubm changesets add
 
 Select the affected packages, bump type, and write a user-facing summary.
 
-- **patch** — Bug fixes, internal refactors with no API changes
-- **minor** — New features, backward-compatible additions
-- **major** — Breaking changes, removed or renamed public APIs
+- **patch**: Bug fixes, internal refactors with no API changes
+- **minor**: New features, backward-compatible additions
+- **major**: Breaking changes, removed or renamed public APIs
 
 PRs with the `no-changeset` label skip the changeset check (use for docs, CI config, etc.).
 
