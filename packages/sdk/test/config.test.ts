@@ -67,3 +67,56 @@ describe('resolveConfig', () => {
 		expect(config.store?.maxReports).toBe(50)
 	})
 })
+
+describe('validateConfig', () => {
+	test('warns on unknown top-level keys in debug mode', () => {
+		const savedDebug = process.env.CLUVO_DEBUG
+		process.env.CLUVO_DEBUG = '1'
+		const chunks: string[] = []
+		const origWrite = process.stderr.write
+		process.stderr.write = ((chunk: string) => {
+			chunks.push(chunk)
+			return true
+		}) as typeof process.stderr.write
+
+		resolveConfig({ ...base, unknownKey: 'value' } as any)
+
+		process.stderr.write = origWrite
+		process.env.CLUVO_DEBUG = savedDebug
+		expect(chunks.some((c) => c.includes('unknownKey'))).toBe(true)
+	})
+
+	test('does not warn when CLUVO_DEBUG is not set', () => {
+		const savedDebug = process.env.CLUVO_DEBUG
+		delete process.env.CLUVO_DEBUG
+		const chunks: string[] = []
+		const origWrite = process.stderr.write
+		process.stderr.write = ((chunk: string) => {
+			chunks.push(chunk)
+			return true
+		}) as typeof process.stderr.write
+
+		resolveConfig({ ...base, unknownKey: 'value' } as any)
+
+		process.stderr.write = origWrite
+		if (savedDebug !== undefined) process.env.CLUVO_DEBUG = savedDebug
+		expect(chunks.some((c) => c.includes('unknownKey'))).toBe(false)
+	})
+
+	test('warns on invalid preset value in debug mode', () => {
+		const savedDebug = process.env.CLUVO_DEBUG
+		process.env.CLUVO_DEBUG = '1'
+		const chunks: string[] = []
+		const origWrite = process.stderr.write
+		process.stderr.write = ((chunk: string) => {
+			chunks.push(chunk)
+			return true
+		}) as typeof process.stderr.write
+
+		resolveConfig({ ...base, preset: 'invalid' as any })
+
+		process.stderr.write = origWrite
+		process.env.CLUVO_DEBUG = savedDebug
+		expect(chunks.some((c) => c.includes('preset'))).toBe(true)
+	})
+})
