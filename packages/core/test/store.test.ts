@@ -153,4 +153,40 @@ describe('Store', () => {
 		expect(list.find((r) => r.id === 'r-submitted')).toBeUndefined()
 		expect(list.find((r) => r.id === 'r-pending')).toBeDefined()
 	})
+
+	test('evict warns to stderr when pending reports are evicted', async () => {
+		const smallStore = new Store(storeDir, 2)
+		await smallStore.save(makeReport('r1', 'pending'))
+		await smallStore.save(makeReport('r2', 'pending'))
+
+		const chunks: string[] = []
+		const origWrite = process.stderr.write
+		process.stderr.write = ((chunk: string) => {
+			chunks.push(chunk)
+			return true
+		}) as typeof process.stderr.write
+
+		await smallStore.save(makeReport('r3', 'pending'))
+
+		process.stderr.write = origWrite
+		expect(chunks.some((c) => c.includes('pending'))).toBe(true)
+	})
+
+	test('evict does not warn when only submitted reports are evicted', async () => {
+		const smallStore = new Store(storeDir, 2)
+		await smallStore.save(makeReport('r1', 'submitted'))
+		await smallStore.save(makeReport('r2', 'pending'))
+
+		const chunks: string[] = []
+		const origWrite = process.stderr.write
+		process.stderr.write = ((chunk: string) => {
+			chunks.push(chunk)
+			return true
+		}) as typeof process.stderr.write
+
+		await smallStore.save(makeReport('r3', 'pending'))
+
+		process.stderr.write = origWrite
+		expect(chunks.some((c) => c.includes('pending'))).toBe(false)
+	})
 })
