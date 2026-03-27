@@ -1,38 +1,20 @@
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
-import { mkdtemp, rm } from 'node:fs/promises'
-import { tmpdir } from 'node:os'
-import { join } from 'node:path'
-import { type DraftPayload, type ErrorReport, Store } from '@cluvo/core'
+import { Store } from '@cluvo/core'
 import { handlePresenterAction } from '../src/action-handler.js'
+import { cleanTempDir, createTempDir, makeDraft, makeReport } from './fixtures.js'
 
-function makeReport(overrides: Partial<ErrorReport> = {}): ErrorReport {
-	return {
-		id: 'test-id',
-		createdAt: '2026-03-27T10:00:00Z',
-		app: { name: 'test-app', version: '1.0.0', runtime: 'node' },
-		error: { name: 'Error', message: 'test error' },
-		environment: { os: 'darwin', arch: 'arm64', runtimeVersion: 'v22.0.0' },
-		sanitizedFields: [],
-		status: 'pending',
-		...overrides,
-	}
-}
-
-const draft: DraftPayload = {
-	title: 'Error: test error',
-	body: '## Summary\n\nTest body',
-}
+const draft = makeDraft()
 
 describe('handlePresenterAction', () => {
 	let storeDir: string
 	let store: Store
 
 	beforeEach(async () => {
-		storeDir = await mkdtemp(join(tmpdir(), 'cluvo-action-'))
+		storeDir = await createTempDir()
 		store = new Store(storeDir)
 	})
 	afterEach(async () => {
-		await rm(storeDir, { recursive: true, force: true })
+		await cleanTempDir(storeDir)
 	})
 
 	test('cancel action updates status to dismissed', async () => {
