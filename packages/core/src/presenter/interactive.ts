@@ -50,11 +50,15 @@ export async function promptAction(
 	switch (key) {
 		case 'v': {
 			const issue = report.matches?.[0]
-			return issue ? { type: 'view', issue } : await promptAction(report, draft, authAvailable, stdin, write)
+			return issue
+				? { type: 'view', issue }
+				: await promptAction(report, draft, authAvailable, stdin, write)
 		}
 		case 'r': {
 			const issue = report.matches?.[0]
-			return issue ? { type: 'react', issue } : await promptAction(report, draft, authAvailable, stdin, write)
+			return issue
+				? { type: 'react', issue }
+				: await promptAction(report, draft, authAvailable, stdin, write)
 		}
 		case 'o':
 			return { type: 'open' }

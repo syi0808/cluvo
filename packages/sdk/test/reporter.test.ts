@@ -29,10 +29,12 @@ describe('createReporter', () => {
 	})
 
 	test('reportError returns ErrorReport and never throws', async () => {
-		const reporter = createReporter(makeConfig({
-			store: { enabled: true },
-			_storeDir: storeDir,
-		}))
+		const reporter = createReporter(
+			makeConfig({
+				store: { enabled: true },
+				_storeDir: storeDir,
+			}),
+		)
 
 		const report = await reporter.reportError(new Error('test failure'), {
 			command: 'build',
@@ -46,9 +48,11 @@ describe('createReporter', () => {
 	})
 
 	test('reportError never throws even with bad input', async () => {
-		const reporter = createReporter(makeConfig({
-			store: { enabled: false },
-		}))
+		const reporter = createReporter(
+			makeConfig({
+				store: { enabled: false },
+			}),
+		)
 
 		const report = await reporter.reportError(null)
 		expect(report.error.message).toBe('null')
@@ -102,11 +106,13 @@ describe('createReporter', () => {
 	})
 
 	test('reportError stores report when store enabled', async () => {
-		const reporter = createReporter(makeConfig({
-			app: { name: 'store-test', version: '1.0.0' },
-			store: { enabled: true },
-			_storeDir: storeDir,
-		}))
+		const reporter = createReporter(
+			makeConfig({
+				app: { name: 'store-test', version: '1.0.0' },
+				store: { enabled: true },
+				_storeDir: storeDir,
+			}),
+		)
 
 		const report = await reporter.reportError(new Error('stored'))
 		const { Store } = await import('@cluvo/core')
@@ -116,10 +122,12 @@ describe('createReporter', () => {
 	})
 
 	test('reportError does not store when store disabled', async () => {
-		const reporter = createReporter(makeConfig({
-			app: { name: 'no-store', version: '1.0.0' },
-			store: { enabled: false },
-		}))
+		const reporter = createReporter(
+			makeConfig({
+				app: { name: 'no-store', version: '1.0.0' },
+				store: { enabled: false },
+			}),
+		)
 
 		const report = await reporter.reportError(new Error('not stored'))
 		expect(report.id).toBeTruthy()
@@ -157,11 +165,13 @@ describe('createReporter', () => {
 	})
 
 	test('installGlobalHandlers returns uninstall function', () => {
-		const reporter = createReporter(makeConfig({
-			interactive: 'never',
-			nonInteractive: 'silent',
-			store: { enabled: false },
-		}))
+		const reporter = createReporter(
+			makeConfig({
+				interactive: 'never',
+				nonInteractive: 'silent',
+				store: { enabled: false },
+			}),
+		)
 
 		const uninstall = reporter.installGlobalHandlers()
 		expect(typeof uninstall).toBe('function')
@@ -169,10 +179,12 @@ describe('createReporter', () => {
 	})
 
 	test('publish delegates to core publish', async () => {
-		const reporter = createReporter(makeConfig({
-			mode: 'file',
-			_storeDir: storeDir,
-		}))
+		const reporter = createReporter(
+			makeConfig({
+				mode: 'file',
+				_storeDir: storeDir,
+			}),
+		)
 
 		const report = reporter.buildReport(new Error('test'))
 		const draft = reporter.buildDraft(report)
@@ -190,9 +202,11 @@ describe('createReporter', () => {
 	})
 
 	test('promptAndSubmit sets status to dismissed in non-interactive mode', async () => {
-		const reporter = createReporter(makeSilentConfig(storeDir, {
-			app: { name: 'nonint-test', version: '1.0.0' },
-		}))
+		const reporter = createReporter(
+			makeSilentConfig(storeDir, {
+				app: { name: 'nonint-test', version: '1.0.0' },
+			}),
+		)
 
 		const report = await reporter.reportError(new Error('non-interactive'))
 		await reporter.promptAndSubmit(report)
@@ -206,9 +220,11 @@ describe('createReporter', () => {
 	// --- New tests for Task 7 ---
 
 	test('reporter exposes new API methods', () => {
-		const reporter = createReporter(makeConfig({
-			app: { name: 'test', version: '1.0.0' },
-		}))
+		const reporter = createReporter(
+			makeConfig({
+				app: { name: 'test', version: '1.0.0' },
+			}),
+		)
 		expect(reporter.reportAndPrompt).toBeInstanceOf(Function)
 		expect(reporter.wrap).toBeInstanceOf(Function)
 		expect(reporter.installExitHandler).toBeInstanceOf(Function)
@@ -216,16 +232,20 @@ describe('createReporter', () => {
 	})
 
 	test('reportAndPrompt collects and stores report in non-interactive mode', async () => {
-		const reporter = createReporter(makeSilentConfig(storeDir, {
-			app: { name: 'test', version: '1.0.0' },
-		}))
+		const reporter = createReporter(
+			makeSilentConfig(storeDir, {
+				app: { name: 'test', version: '1.0.0' },
+			}),
+		)
 		await reporter.reportAndPrompt(new Error('test'))
 	})
 
 	test('wrap catches error and reports it', async () => {
-		const reporter = createReporter(makeSilentConfig(storeDir, {
-			app: { name: 'test', version: '1.0.0' },
-		}))
+		const reporter = createReporter(
+			makeSilentConfig(storeDir, {
+				app: { name: 'test', version: '1.0.0' },
+			}),
+		)
 		await expect(
 			reporter.wrap(async () => {
 				throw new Error('wrapped')
@@ -234,9 +254,11 @@ describe('createReporter', () => {
 	})
 
 	test('wrap with rethrow=false swallows error', async () => {
-		const reporter = createReporter(makeSilentConfig(storeDir, {
-			app: { name: 'test', version: '1.0.0' },
-		}))
+		const reporter = createReporter(
+			makeSilentConfig(storeDir, {
+				app: { name: 'test', version: '1.0.0' },
+			}),
+		)
 		await reporter.wrap(
 			async () => {
 				throw new Error('swallowed')
@@ -246,23 +268,27 @@ describe('createReporter', () => {
 	})
 
 	test('wrap does nothing when function succeeds', async () => {
-		const reporter = createReporter(makeConfig({
-			app: { name: 'test', version: '1.0.0' },
-			store: { enabled: false },
-		}))
+		const reporter = createReporter(
+			makeConfig({
+				app: { name: 'test', version: '1.0.0' },
+				store: { enabled: false },
+			}),
+		)
 		await reporter.wrap(async () => {
 			/* success */
 		})
 	})
 
 	test('wrapCommand accepts WrapOptions', async () => {
-		const reporter = createReporter(makeConfig({
-			app: { name: 'test', version: '1.0.0' },
-			interactive: 'never',
-			nonInteractive: 'silent',
-			store: { enabled: false },
-			dedupe: { enabled: false },
-		}))
+		const reporter = createReporter(
+			makeConfig({
+				app: { name: 'test', version: '1.0.0' },
+				interactive: 'never',
+				nonInteractive: 'silent',
+				store: { enabled: false },
+				dedupe: { enabled: false },
+			}),
+		)
 		await reporter.wrapCommand(
 			async () => {
 				throw new Error('swallowed-cmd')
@@ -272,11 +298,13 @@ describe('createReporter', () => {
 	})
 
 	test('duplicate error detection via WeakMap', async () => {
-		const reporter = createReporter(makeConfig({
-			app: { name: 'dedup-test', version: '1.0.0' },
-			store: { enabled: true },
-			_storeDir: storeDir,
-		}))
+		const reporter = createReporter(
+			makeConfig({
+				app: { name: 'dedup-test', version: '1.0.0' },
+				store: { enabled: true },
+				_storeDir: storeDir,
+			}),
+		)
 		const error = new Error('duplicate')
 		const report1 = await reporter.reportError(error)
 		const report2 = await reporter.reportError(error)
@@ -284,9 +312,11 @@ describe('createReporter', () => {
 	})
 
 	test('receiveChildReport stores report', async () => {
-		const reporter = createReporter(makeSilentConfig(storeDir, {
-			app: { name: 'parent-test', version: '1.0.0' },
-		}))
+		const reporter = createReporter(
+			makeSilentConfig(storeDir, {
+				app: { name: 'parent-test', version: '1.0.0' },
+			}),
+		)
 		const childReport = {
 			id: 'child-1',
 			createdAt: new Date().toISOString(),
@@ -304,13 +334,15 @@ describe('createReporter', () => {
 	})
 
 	test('promptAndSubmit sets status to dismissed on cancel', async () => {
-		const reporter = createReporter(makeConfig({
-			app: { name: 'cancel-test', version: '1.0.0' },
-			interactive: 'always',
-			store: { enabled: true },
-			dedupe: { enabled: false },
-			_storeDir: storeDir,
-		}))
+		const reporter = createReporter(
+			makeConfig({
+				app: { name: 'cancel-test', version: '1.0.0' },
+				interactive: 'always',
+				store: { enabled: true },
+				dedupe: { enabled: false },
+				_storeDir: storeDir,
+			}),
+		)
 
 		const report = await reporter.reportError(new Error('will cancel'))
 		// In non-TTY, TerminalPresenter.prompt() returns null → cancel path
@@ -323,10 +355,12 @@ describe('createReporter', () => {
 	})
 
 	test('installExitHandler returns cleanup function', () => {
-		const reporter = createReporter(makeConfig({
-			app: { name: 'test', version: '1.0.0' },
-			store: { enabled: false },
-		}))
+		const reporter = createReporter(
+			makeConfig({
+				app: { name: 'test', version: '1.0.0' },
+				store: { enabled: false },
+			}),
+		)
 		const cleanup = reporter.installExitHandler()
 		expect(typeof cleanup).toBe('function')
 		cleanup()
@@ -339,10 +373,12 @@ describe('no-op reporter (non-top-level new Reporter)', () => {
 
 	// Named function + `new` → Bun preserves caller frame → detected as non-top-level
 	function createInsideFunction() {
-		return new Reporter(makeConfig({
-			app: { name: 'should-be-noop', version: '1.0.0' },
-			store: { enabled: false },
-		}))
+		return new Reporter(
+			makeConfig({
+				app: { name: 'should-be-noop', version: '1.0.0' },
+				store: { enabled: false },
+			}),
+		)
 	}
 
 	test('createReporter inside named function returns no-op reporter', () => {

@@ -118,9 +118,7 @@ export class Store {
 
 		const toRemove = sorted.slice(0, reports.length - this.maxReports)
 
-		const pendingEvicted = toRemove.filter(
-			(r) => r.status === 'pending' || r.status === 'prompted',
-		)
+		const pendingEvicted = toRemove.filter((r) => r.status === 'pending' || r.status === 'prompted')
 		if (pendingEvicted.length > 0) {
 			process.stderr.write(
 				`[cluvo] warning: evicting ${pendingEvicted.length} unreviewed pending report(s) for "${appName}" (limit: ${this.maxReports}). Use \`cluvo list\` to review reports before they are evicted.\n`,

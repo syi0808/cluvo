@@ -42,9 +42,7 @@ function validateConfig(config: InternalConfig): void {
 	}
 
 	if (config.preset && !VALID_PRESETS.has(config.preset)) {
-		process.stderr.write(
-			`[cluvo] invalid preset: "${config.preset}" (expected "cli" or "sdk")\n`,
-		)
+		process.stderr.write(`[cluvo] invalid preset: "${config.preset}" (expected "cli" or "sdk")\n`)
 	}
 }
 

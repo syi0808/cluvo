@@ -33,7 +33,10 @@ export function makeConfig(overrides: Partial<InternalConfig> = {}): InternalCon
 	}
 }
 
-export function makeSilentConfig(storeDir: string, overrides: Partial<InternalConfig> = {}): InternalConfig {
+export function makeSilentConfig(
+	storeDir: string,
+	overrides: Partial<InternalConfig> = {},
+): InternalConfig {
 	return {
 		repo: 'owner/repo',
 		app: { name: 'test-cli', version: '1.0.0' },

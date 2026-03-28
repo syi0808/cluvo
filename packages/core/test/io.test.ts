@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test'
-import { readYesNo, readKey } from '../src/presenter/io.js'
 import { EventEmitter } from 'node:events'
+import { readKey, readYesNo } from '../src/presenter/io.js'
 
 function createMockStdin() {
 	const emitter = new EventEmitter() as EventEmitter & {
@@ -20,7 +20,10 @@ describe('readYesNo', () => {
 	test('returns true on Y input', async () => {
 		const stdin = createMockStdin()
 		const chunks: string[] = []
-		const write = (chunk: string) => { chunks.push(chunk); return true }
+		const write = (chunk: string) => {
+			chunks.push(chunk)
+			return true
+		}
 
 		const promise = readYesNo(stdin as any, write)
 		stdin.emit('data', Buffer.from('Y'))
@@ -44,7 +47,10 @@ describe('readYesNo', () => {
 	test('returns false on n input', async () => {
 		const stdin = createMockStdin()
 		const chunks: string[] = []
-		const write = (chunk: string) => { chunks.push(chunk); return true }
+		const write = (chunk: string) => {
+			chunks.push(chunk)
+			return true
+		}
 
 		const promise = readYesNo(stdin as any, write)
 		stdin.emit('data', Buffer.from('n'))
@@ -68,7 +74,10 @@ describe('readKey', () => {
 	test('returns lowercase key', async () => {
 		const stdin = createMockStdin()
 		const chunks: string[] = []
-		const write = (chunk: string) => { chunks.push(chunk); return true }
+		const write = (chunk: string) => {
+			chunks.push(chunk)
+			return true
+		}
 
 		const promise = readKey(stdin as any, write)
 		stdin.emit('data', Buffer.from('O'))
