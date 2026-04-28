@@ -208,4 +208,103 @@ await new Promise(r => setTimeout(r, 200));
 		expect(elapsed).toBeLessThan(8000)
 		expect(result.exitCode).toBe(0)
 	})
+
+	test('11: wrapCommand SIGINT-style cancellation -> no report in store', async () => {
+		const script = `
+${reporterSetup()}
+const error = new Error('SIGINT');
+(error as Error & { code?: string }).code = 'SIGINT';
+await reporter.wrapCommand(async () => {
+  throw error;
+});
+`
+		const result = await runScript(script, {
+			env: environments.pipe,
+			storeDir,
+			prependCode: mockFetchScript(),
+			timeout: 10000,
+		})
+		expect(result.exitCode).not.toBe(0)
+		const reports = await readReports(storeDir, 'test-app')
+		expect(reports).toHaveLength(0)
+	})
+
+	test('12: global handler AbortError cancellation -> no report in store', async () => {
+		const script = `
+${reporterSetup()}
+reporter.installGlobalHandlers();
+const error = new Error('operation aborted');
+error.name = 'AbortError';
+process.emit('unhandledRejection', error, Promise.resolve());
+await new Promise(r => setTimeout(r, 200));
+`
+		const result = await runScript(script, {
+			env: environments.pipe,
+			storeDir,
+			prependCode: mockFetchScript(),
+			timeout: 10000,
+		})
+		expect(result.exitCode).toBe(0)
+		const reports = await readReports(storeDir, 'test-app')
+		expect(reports).toHaveLength(0)
+	})
+
+	test('13: intercepted process.exit(130) skips pending report processing', async () => {
+		const script = `
+${reporterSetup()}
+await reporter.reportError(new Error('pending before ctrl-c'));
+reporter.installExitHandler({ interceptProcessExit: true, timeout: 5000 });
+process.exit(130);
+`
+		const result = await runScript(script, {
+			env: environments.pipe,
+			storeDir,
+			prependCode: mockFetchScript(),
+			timeout: 10000,
+		})
+		expect(result.exitCode).toBe(130)
+		const reports = await readReports(storeDir, 'test-app')
+		expect(reports).toHaveLength(1)
+		expect(reports[0].status).toBe('pending')
+	})
+
+	test('14: ignore opt-out reports cancellation errors', async () => {
+		const script = `
+${reporterSetup(`ignore: { userCancellation: false },`)}
+reporter.installGlobalHandlers();
+const error = new Error('operation aborted');
+error.name = 'AbortError';
+process.emit('unhandledRejection', error, Promise.resolve());
+await new Promise(r => setTimeout(r, 200));
+`
+		const result = await runScript(script, {
+			env: environments.pipe,
+			storeDir,
+			prependCode: mockFetchScript(),
+			timeout: 10000,
+		})
+		expect(result.exitCode).toBe(0)
+		const reports = await readReports(storeDir, 'test-app')
+		expect(reports.length).toBeGreaterThanOrEqual(1)
+	})
+
+	test('15: pubm-style PromptCancelledError cancellation -> no report in store', async () => {
+		const script = `
+${reporterSetup()}
+const error = new Error('Prompt cancelled.');
+error.name = 'PromptCancelledError';
+await reporter.wrapCommand(async () => {
+  throw error;
+});
+`
+		const result = await runScript(script, {
+			env: environments.pipe,
+			storeDir,
+			prependCode: mockFetchScript(),
+			timeout: 10000,
+		})
+		expect(result.exitCode).not.toBe(0)
+		const reports = await readReports(storeDir, 'test-app')
+		expect(reports).toHaveLength(0)
+	})
 })

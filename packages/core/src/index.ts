@@ -7,6 +7,8 @@ export {
 	collectCommand,
 	collectEnvironment,
 	installGlobalHandlers,
+	isUserCancellation,
+	isUserCancellationExitCode,
 } from './collector/index.js'
 export type { DiagnosticSummary } from './diagnostic/index.js'
 // Diagnostic

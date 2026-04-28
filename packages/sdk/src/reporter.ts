@@ -15,6 +15,8 @@ import {
 	handleNonInteractive,
 	installGlobalHandlers as installGlobalHandlersCore,
 	isAuthAvailable,
+	isUserCancellation,
+	isUserCancellationExitCode,
 	type MatchResult,
 	match,
 	type PresenterAdapter,
@@ -79,6 +81,20 @@ const NOOP_REPORT: ErrorReport = {
 	environment: { os: 'unknown', arch: 'unknown', runtimeVersion: 'unknown' },
 	sanitizedFields: [],
 	status: 'dismissed',
+}
+
+const IGNORED_REPORT: ErrorReport = {
+	id: 'ignored',
+	createdAt: '',
+	app: { name: 'ignored', version: '0.0.0', runtime: 'unknown' },
+	error: { name: 'UserCancellation', message: 'Ignored user cancellation' },
+	environment: { os: 'unknown', arch: 'unknown', runtimeVersion: 'unknown' },
+	sanitizedFields: [],
+	status: 'dismissed',
+}
+
+function isIgnoredReport(report: ErrorReport): boolean {
+	return report === IGNORED_REPORT
 }
 
 /**
@@ -176,6 +192,18 @@ export class Reporter {
 		// --- Error dedup ---
 		const seenErrors = new WeakMap<object, ErrorReport>()
 
+		const shouldIgnoreError = (error: unknown, context?: ErrorContext): boolean => {
+			for (const predicate of config.ignore?.custom ?? []) {
+				try {
+					if (predicate(error, context)) return true
+				} catch {
+					// Ignore broken ignore predicates so reporting remains best-effort.
+				}
+			}
+
+			return config.ignore?.userCancellation !== false && isUserCancellation(error)
+		}
+
 		// --- Prompt queue ---
 		let promptQueue = Promise.resolve()
 		function enqueuePrompt(fn: () => Promise<void>): Promise<void> {
@@ -238,6 +266,8 @@ export class Reporter {
 		}
 
 		this.reportError = async (error: unknown, context?: ErrorContext): Promise<ErrorReport> => {
+			if (shouldIgnoreError(error, context)) return IGNORED_REPORT
+
 			if (typeof error === 'object' && error !== null && seenErrors.has(error)) {
 				const existingReport = seenErrors.get(error)
 				if (existingReport) return existingReport
@@ -274,6 +304,8 @@ export class Reporter {
 		}
 
 		this.promptAndSubmit = async (report: ErrorReport): Promise<void> => {
+			if (isIgnoredReport(report)) return
+
 			const myEntry = registry.stack.find((e) => e.id === reporterId)
 			if (myEntry) {
 				const parent = registry.getParent(myEntry)
@@ -336,6 +368,8 @@ export class Reporter {
 		}
 
 		this.reportAndPrompt = async (error: unknown, context?: ErrorContext): Promise<void> => {
+			if (shouldIgnoreError(error, context)) return
+
 			const report = await this.reportError(error, context)
 			await enqueuePrompt(() => this.promptAndSubmit(report))
 		}
@@ -344,7 +378,9 @@ export class Reporter {
 			try {
 				await fn()
 			} catch (error) {
-				await this.reportAndPrompt(error)
+				if (!shouldIgnoreError(error)) {
+					await this.reportAndPrompt(error)
+				}
 				if (opts?.rethrow !== false) throw error
 			}
 		}
@@ -358,15 +394,20 @@ export class Reporter {
 					subcommand: process.argv[3],
 					argv: process.argv.slice(2),
 				}
-				const report = await this.reportError(error, context)
-				await enqueuePrompt(() => this.promptAndSubmit(report))
+				if (!shouldIgnoreError(error, context)) {
+					const report = await this.reportError(error, context)
+					await enqueuePrompt(() => this.promptAndSubmit(report))
+				}
 				if (opts?.rethrow !== false) throw error
 			}
 		}
 
 		this.installGlobalHandlers = (): (() => void) => {
-			return installGlobalHandlersCore(async (payload, origin) => {
-				const report = await this.reportError(payload, { metadata: { origin } })
+			return installGlobalHandlersCore(async (_payload, origin, original) => {
+				const context = { metadata: { origin } }
+				if (shouldIgnoreError(original, context)) return
+
+				const report = await this.reportError(original, context)
 				await this.promptAndSubmit(report)
 			})
 		}
@@ -383,6 +424,8 @@ export class Reporter {
 					}
 				},
 				interceptProcessExit: opts?.interceptProcessExit,
+				shouldIgnoreExitCode: (code) =>
+					config.ignore?.userCancellation !== false && isUserCancellationExitCode(code),
 				timeout: opts?.timeout,
 			})
 		}

@@ -31,11 +31,11 @@ describe('installGlobalHandlers', () => {
 		expect(events).toContain('unhandledRejection')
 	})
 
-	test('callback receives ErrorPayload + uncaughtException origin when invoked with Error', () => {
+	test('callback receives ErrorPayload, origin, and original value for uncaughtException', () => {
 		onSpy = spyOn(process, 'on').mockReturnValue(process)
 		offSpy = spyOn(process, 'off').mockReturnValue(process)
 
-		const callback = mock<(payload: ErrorPayload, origin: string) => void>()
+		const callback = mock<(payload: ErrorPayload, origin: string, original: unknown) => void>()
 		installGlobalHandlers(callback)
 
 		const uncaughtCall = onSpy.mock.calls.find((c) => c[0] === 'uncaughtException')!
@@ -45,17 +45,18 @@ describe('installGlobalHandlers', () => {
 		listener(error)
 
 		expect(callback).toHaveBeenCalledTimes(1)
-		const [payload, origin] = callback.mock.calls[0]
+		const [payload, origin, original] = callback.mock.calls[0]
 		expect(origin).toBe('uncaughtException')
+		expect(original).toBe(error)
 		expect(payload.name).toBe('TypeError')
 		expect(payload.message).toBe('test error')
 	})
 
-	test('callback receives ErrorPayload + unhandledRejection origin when invoked with non-Error', () => {
+	test('callback receives ErrorPayload, origin, and original value for unhandledRejection', () => {
 		onSpy = spyOn(process, 'on').mockReturnValue(process)
 		offSpy = spyOn(process, 'off').mockReturnValue(process)
 
-		const callback = mock<(payload: ErrorPayload, origin: string) => void>()
+		const callback = mock<(payload: ErrorPayload, origin: string, original: unknown) => void>()
 		installGlobalHandlers(callback)
 
 		const rejectionCall = onSpy.mock.calls.find((c) => c[0] === 'unhandledRejection')!
@@ -64,8 +65,9 @@ describe('installGlobalHandlers', () => {
 		listener('something went wrong')
 
 		expect(callback).toHaveBeenCalledTimes(1)
-		const [payload, origin] = callback.mock.calls[0]
+		const [payload, origin, original] = callback.mock.calls[0]
 		expect(origin).toBe('unhandledRejection')
+		expect(original).toBe('something went wrong')
 		expect(payload.name).toBe('Error')
 		expect(payload.message).toBe('something went wrong')
 	})

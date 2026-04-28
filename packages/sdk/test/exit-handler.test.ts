@@ -62,6 +62,22 @@ describe('createExitHandler', () => {
 		cleanup()
 	})
 
+	test('ignores configured cancellation exit code at beforeExit', async () => {
+		const pendingReport = makePendingReport('cancel-before-exit')
+		const onPending = mock(async () => {})
+		const cleanup = createExitHandler({
+			getPendingReports: async () => [pendingReport],
+			onPending,
+			shouldIgnoreExitCode: (code) => code === 130,
+		})
+
+		process.emit('beforeExit', 130)
+		await new Promise((r) => setTimeout(r, 50))
+
+		expect(onPending).not.toHaveBeenCalled()
+		cleanup()
+	})
+
 	test('cleanup removes listener', () => {
 		const onPending = mock(async () => {})
 		const cleanup = createExitHandler({
@@ -106,5 +122,31 @@ describe('createExitHandler', () => {
 		expect(process.exit).not.toBe(originalExit)
 		cleanup()
 		expect(process.exit).toBe(originalExit)
+	})
+
+	test('interceptProcessExit skips pending processing for configured cancellation exit code', () => {
+		originalExit = process.exit
+		const exitCalls: unknown[] = []
+		process.exit = ((code?: number | string | null) => {
+			exitCalls.push(code)
+			throw new Error('exit')
+		}) as typeof process.exit
+
+		const pendingReport = makePendingReport('cancel-process-exit')
+		const onPending = mock(async () => {})
+		const cleanup = createExitHandler({
+			getPendingReports: async () => [pendingReport],
+			onPending,
+			interceptProcessExit: true,
+			shouldIgnoreExitCode: (code) => code === 130,
+		})
+
+		try {
+			expect(() => process.exit(130)).toThrow('exit')
+		} finally {
+			cleanup()
+		}
+		expect(onPending).not.toHaveBeenCalled()
+		expect(exitCalls).toEqual([130])
 	})
 })

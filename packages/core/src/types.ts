@@ -121,6 +121,7 @@ export interface ReporterConfig {
 	branding?: {
 		showName?: boolean
 	}
+	ignore?: ReporterIgnoreConfig
 }
 
 export interface ErrorContext {
@@ -128,6 +129,13 @@ export interface ErrorContext {
 	subcommand?: string
 	argv?: string[]
 	metadata?: Record<string, unknown>
+}
+
+export type IgnorePredicate = (error: unknown, context?: ErrorContext) => boolean
+
+export interface ReporterIgnoreConfig {
+	userCancellation?: boolean
+	custom?: IgnorePredicate[]
 }
 
 // === Presenter Adapter ===

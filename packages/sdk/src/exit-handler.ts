@@ -4,6 +4,7 @@ interface ExitHandlerConfig {
 	getPendingReports: () => Promise<ErrorReport[]>
 	onPending: (reports: ErrorReport[]) => Promise<void>
 	interceptProcessExit?: boolean
+	shouldIgnoreExitCode?: (code: number | string | null | undefined) => boolean
 	timeout?: number
 }
 
@@ -11,8 +12,12 @@ export function createExitHandler(config: ExitHandlerConfig): () => void {
 	const timeout = config.timeout ?? 30_000
 	let handling = false
 
-	const beforeExitHandler = async () => {
+	const beforeExitHandler = async (code?: number | string) => {
 		if (handling) return
+		if (config.shouldIgnoreExitCode?.(code ?? process.exitCode)) {
+			handling = true
+			return
+		}
 		handling = true
 		try {
 			const pending = await config.getPendingReports()
@@ -40,6 +45,11 @@ export function createExitHandler(config: ExitHandlerConfig): () => void {
 
 		process.exit = ((code?: number) => {
 			const exitCode = code ?? process.exitCode ?? 0
+
+			if (config.shouldIgnoreExitCode?.(exitCode)) {
+				originalExit?.(exitCode)
+				return
+			}
 
 			config
 				.getPendingReports()

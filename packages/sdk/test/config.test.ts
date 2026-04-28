@@ -52,6 +52,11 @@ describe('resolveConfig', () => {
 		expect(config.store?.maxReports).toBe(100)
 	})
 
+	test('applies ignore defaults', () => {
+		const config = resolveConfig(base)
+		expect(config.ignore?.userCancellation).toBe(true)
+	})
+
 	test('preserves user overrides', () => {
 		const config = resolveConfig({
 			...base,
@@ -59,12 +64,14 @@ describe('resolveConfig', () => {
 			interactive: 'never',
 			collect: { argv: false },
 			store: { enabled: false, maxReports: 50 },
+			ignore: { userCancellation: false },
 		})
 		expect(config.mode).toBe('api')
 		expect(config.interactive).toBe('never')
 		expect(config.collect?.argv).toBe(false)
 		expect(config.store?.enabled).toBe(false)
 		expect(config.store?.maxReports).toBe(50)
+		expect(config.ignore?.userCancellation).toBe(false)
 	})
 })
 

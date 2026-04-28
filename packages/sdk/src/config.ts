@@ -24,6 +24,7 @@ const KNOWN_KEYS = new Set([
 	'dedupe',
 	'prompt',
 	'branding',
+	'ignore',
 	// internal keys
 	'_storeDir',
 	'_skipTopLevelCheck',
@@ -71,6 +72,7 @@ export function resolveConfig(
 		sanitize: { enabled: true, ...config.sanitize },
 		dedupe: { enabled: true, searchDiscussions: false, ...config.dedupe },
 		branding: { showName: false, ...config.branding },
+		ignore: { userCancellation: true, ...config.ignore },
 		issue: {
 			...config.issue,
 			sections: config.issue?.sections ?? preset?.issue?.sections,

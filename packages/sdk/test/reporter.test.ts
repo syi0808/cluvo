@@ -121,6 +121,90 @@ describe('createReporter', () => {
 		expect(loaded).not.toBeNull()
 	})
 
+	test('reportError ignores user cancellation by default', async () => {
+		const reporter = createReporter(
+			makeConfig({
+				app: { name: 'cancel-default', version: '1.0.0' },
+				store: { enabled: true },
+				_storeDir: storeDir,
+			}),
+		)
+		const error = new Error('operation aborted')
+		error.name = 'AbortError'
+
+		const report = await reporter.reportError(error)
+
+		expect(report.id).toBe('ignored')
+		const { Store } = await import('@cluvo/core')
+		const store = new Store(storeDir)
+		const reports = await store.list('cancel-default')
+		expect(reports).toHaveLength(0)
+	})
+
+	test('reportError stores user cancellation when ignore opt-out is disabled', async () => {
+		const reporter = createReporter(
+			makeConfig({
+				app: { name: 'cancel-opt-out', version: '1.0.0' },
+				store: { enabled: true },
+				ignore: { userCancellation: false },
+				_storeDir: storeDir,
+			}),
+		)
+		const error = new Error('operation aborted')
+		error.name = 'AbortError'
+
+		const report = await reporter.reportError(error)
+
+		expect(report.id).not.toBe('ignored')
+		const { Store } = await import('@cluvo/core')
+		const store = new Store(storeDir)
+		const reports = await store.list('cancel-opt-out')
+		expect(reports).toHaveLength(1)
+		expect(reports[0].id).toBe(report.id)
+	})
+
+	test('reportError ignores errors matched by a custom predicate', async () => {
+		const reporter = createReporter(
+			makeConfig({
+				app: { name: 'custom-ignore', version: '1.0.0' },
+				store: { enabled: true },
+				ignore: {
+					custom: [(error) => error instanceof Error && error.message === 'skip this one'],
+				},
+				_storeDir: storeDir,
+			}),
+		)
+
+		const report = await reporter.reportError(new Error('skip this one'))
+
+		expect(report.id).toBe('ignored')
+		const { Store } = await import('@cluvo/core')
+		const store = new Store(storeDir)
+		const reports = await store.list('custom-ignore')
+		expect(reports).toHaveLength(0)
+	})
+
+	test('wrapCommand ignores SIGINT cancellation but still rethrows', async () => {
+		const reporter = createReporter(
+			makeSilentConfig(storeDir, {
+				app: { name: 'wrap-cancel', version: '1.0.0' },
+			}),
+		)
+		const error = new Error('SIGINT')
+		Object.assign(error, { code: 'SIGINT' })
+
+		await expect(
+			reporter.wrapCommand(async () => {
+				throw error
+			}),
+		).rejects.toBe(error)
+
+		const { Store } = await import('@cluvo/core')
+		const store = new Store(storeDir)
+		const reports = await store.list('wrap-cancel')
+		expect(reports).toHaveLength(0)
+	})
+
 	test('reportError does not store when store disabled', async () => {
 		const reporter = createReporter(
 			makeConfig({
