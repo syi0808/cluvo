@@ -1,4 +1,3 @@
-#!/usr/bin/env bun
 import { join } from 'node:path'
 import type { ErrorReport } from '@cluvo/core'
 import { Store } from '@cluvo/core'
@@ -64,7 +63,11 @@ async function main() {
 						})
 					})
 				}
-				const { submitted, skipped, failed } = await submitAll(store, { repo }, confirmEach)
+				const { submitted, skipped, failed } = await submitAll(
+					store,
+					{ repo, fallbackDir: join(STORE_DIR, 'drafts') },
+					confirmEach,
+				)
 				const parts = [`Submitted ${submitted} report(s)`]
 				if (skipped > 0) parts.push(`${skipped} skipped`)
 				if (failed > 0) parts.push(`${failed} failed`)
@@ -80,7 +83,10 @@ async function main() {
 					console.error(`Report ${id} not found`)
 					return exitWithCode(1)
 				}
-				const result = await submitReport(store, report, { repo })
+				const result = await submitReport(store, report, {
+					repo,
+					fallbackDir: join(STORE_DIR, 'drafts'),
+				})
 				console.log(result ? `Submitted: ${result}` : 'Submitted (saved locally)')
 			}
 			break

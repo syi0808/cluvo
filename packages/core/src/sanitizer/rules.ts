@@ -8,7 +8,27 @@ export const DEFAULT_RULES: SanitizeRule[] = [
 	},
 	{
 		name: 'github-token',
-		pattern: /gh[ps]_[A-Za-z0-9_]{36,}/g,
+		pattern: /gh[pousr]_[A-Za-z0-9_]{36,}/g,
+		replacement: '[REDACTED]',
+	},
+	{
+		name: 'github-fine-grained-token',
+		pattern: /github_pat_[A-Za-z0-9_]{20,}/g,
+		replacement: '[REDACTED]',
+	},
+	{
+		name: 'npm-token',
+		pattern: /npm_[A-Za-z0-9]{36,}/g,
+		replacement: '[REDACTED]',
+	},
+	{
+		name: 'url-credentials',
+		pattern: /([a-z][a-z0-9+.-]*:\/\/)([^/\s:@]+):([^@\s/]+)@/gi,
+		replacement: '$1$2:***@',
+	},
+	{
+		name: 'openai-project-token',
+		pattern: /sk-proj-[A-Za-z0-9_-]{10,}/g,
 		replacement: '[REDACTED]',
 	},
 	{

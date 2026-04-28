@@ -16,6 +16,9 @@ export function sanitize(report: ErrorReport, customRules?: SanitizeRule[]): Err
 	const sanitizedCommand = report.command
 		? sanitizeCommand(report.command, sanitizedFields)
 		: undefined
+	const sanitizedMetadata = report.metadata
+		? sanitizeUnknown(report.metadata, rules, 'metadata', sanitizedFields)
+		: undefined
 
 	return {
 		...report,
@@ -26,6 +29,7 @@ export function sanitize(report: ErrorReport, customRules?: SanitizeRule[]): Err
 			causeChain: sanitizedCauseChain,
 		},
 		command: sanitizedCommand,
+		metadata: sanitizedMetadata as Record<string, unknown> | undefined,
 		sanitizedFields: [...report.sanitizedFields, ...sanitizedFields],
 	}
 }
@@ -47,6 +51,11 @@ function sanitizeCommand(
 
 	let redacted = false
 	const sanitizedArgv = command.argv.map((arg, i) => {
+		const inlineFlag = arg.match(/^([^=]+)=(.*)$/)
+		if (inlineFlag && ARGV_SENSITIVE_FLAGS.has(inlineFlag[1])) {
+			redacted = true
+			return `${inlineFlag[1]}=[REDACTED]`
+		}
 		if (command.argv && ARGV_SENSITIVE_FLAGS.has(command.argv[i - 1])) {
 			redacted = true
 			return '[REDACTED]'
@@ -60,4 +69,44 @@ function sanitizeCommand(
 		...command,
 		argv: sanitizedArgv,
 	}
+}
+
+function sanitizeUnknown(
+	value: unknown,
+	rules: SanitizeRule[],
+	path: string,
+	sanitizedFields: string[],
+	seen = new WeakSet<object>(),
+): unknown {
+	if (typeof value === 'string') {
+		const sanitized = applyRules(value, rules)
+		if (sanitized !== value) sanitizedFields.push(path)
+		return sanitized
+	}
+
+	if (typeof value === 'bigint') return value.toString()
+	if (value === null || typeof value !== 'object') return value
+
+	if (seen.has(value)) {
+		sanitizedFields.push(path)
+		return '[Circular]'
+	}
+	seen.add(value)
+
+	if (value instanceof Date) return value.toISOString()
+
+	if (Array.isArray(value)) {
+		const sanitized = value.map((item, index) =>
+			sanitizeUnknown(item, rules, `${path}[${index}]`, sanitizedFields, seen),
+		)
+		seen.delete(value)
+		return sanitized
+	}
+
+	const sanitized: Record<string, unknown> = {}
+	for (const [key, child] of Object.entries(value)) {
+		sanitized[key] = sanitizeUnknown(child, rules, `${path}.${key}`, sanitizedFields, seen)
+	}
+	seen.delete(value)
+	return sanitized
 }

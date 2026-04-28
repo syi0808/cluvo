@@ -1,4 +1,4 @@
-import { existsSync, rmSync } from 'node:fs'
+import { existsSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 
 const packageDir = import.meta.dir
@@ -26,6 +26,12 @@ await Bun.build({
 	external: [...nodeBuiltins, '@cluvo/core', '@cluvo/sdk'],
 	naming: 'bin.cjs',
 })
+
+const binPath = path.join(distDir, 'bin.cjs')
+const bin = readFileSync(binPath, 'utf-8')
+if (!bin.startsWith('#!')) {
+	writeFileSync(binPath, `#!/usr/bin/env node\n${bin}`)
+}
 
 // Types
 const tscResult = Bun.spawnSync(

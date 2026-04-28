@@ -101,6 +101,21 @@ describe('sanitize', () => {
 		expect(result.command!.argv).not.toContain('ghp_secret123')
 	})
 
+	test('masks inline argv token assignments', () => {
+		const report = makeReport({
+			command: {
+				command: 'publish',
+				argv: ['publish', '--token=ghp_secret123', '--api-key=sk-proj-secret1234567890'],
+			},
+		})
+		const result = sanitize(report)
+		expect(result.command!.argv).toContain('--token=[REDACTED]')
+		expect(result.command!.argv).toContain('--api-key=[REDACTED]')
+		expect(result.command!.argv?.join(' ')).not.toContain('ghp_secret123')
+		expect(result.command!.argv?.join(' ')).not.toContain('sk-proj-secret')
+		expect(result.sanitizedFields).toContain('command.argv')
+	})
+
 	test('masks sk-token patterns', () => {
 		const report = makeReport({
 			error: { name: 'Error', message: 'Key: sk-live-abc123def456xyz' },
@@ -108,6 +123,37 @@ describe('sanitize', () => {
 		const result = sanitize(report)
 		expect(result.error.message).not.toContain('sk-live-abc123def456xyz')
 		expect(result.error.message).toContain('[REDACTED]')
+	})
+
+	test('masks modern service tokens and URL credentials', () => {
+		const report = makeReport({
+			error: {
+				name: 'Error',
+				message:
+					'github_pat_11AAAAAAAAAAAAAAAAAAAAAA npm_123456789012345678901234567890123456 sk-proj-abc123def456 https://user:s3cret@registry.example.com/pkg',
+			},
+		})
+		const result = sanitize(report)
+		expect(result.error.message).not.toContain('github_pat_')
+		expect(result.error.message).not.toContain('npm_123')
+		expect(result.error.message).not.toContain('sk-proj-abc')
+		expect(result.error.message).not.toContain('s3cret')
+		expect(result.error.message).toContain('https://user:***@registry.example.com/pkg')
+	})
+
+	test('sanitizes nested metadata values before storing', () => {
+		const report = makeReport({
+			metadata: {
+				token: 'github_pat_11AAAAAAAAAAAAAAAAAAAAAA',
+				nested: { registry: 'https://user:s3cret@registry.example.com/pkg' },
+			},
+		})
+		const result = sanitize(report)
+		const json = JSON.stringify(result.metadata)
+		expect(json).not.toContain('github_pat_')
+		expect(json).not.toContain('s3cret')
+		expect(result.sanitizedFields).toContain('metadata.token')
+		expect(result.sanitizedFields).toContain('metadata.nested.registry')
 	})
 
 	test('masks private key blocks', () => {

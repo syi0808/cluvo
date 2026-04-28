@@ -1,3 +1,4 @@
+import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import type { DraftPayload, ReporterMode } from '../types.js'
 import { checkGhAuth, checkGhInstalled, getGithubToken } from './auth.js'
@@ -74,10 +75,24 @@ async function tryPublish(
 }
 
 async function fileFallback(draft: DraftPayload, options: PublishOptions): Promise<PublishResult> {
-	const dir = options.fallbackDir ?? join(process.env.HOME || '.', '.cluvo', 'drafts')
 	const filename = `cluvo-report-${Date.now()}.md`
-	const filePath = join(dir, filename)
-	await saveReportFile(draft, filePath)
-	process.stderr.write(renderTerminalDraft(draft))
-	return { method: 'file', filePath }
+	const dirs = [
+		options.fallbackDir,
+		join(process.env.HOME || '.', '.cluvo', 'drafts'),
+		join(tmpdir(), 'cluvo-drafts'),
+	].filter((dir, index, all): dir is string => !!dir && all.indexOf(dir) === index)
+
+	let lastError: unknown
+	for (const dir of dirs) {
+		const filePath = join(dir, filename)
+		try {
+			await saveReportFile(draft, filePath)
+			process.stderr.write(renderTerminalDraft(draft))
+			return { method: 'file', filePath }
+		} catch (error) {
+			lastError = error
+		}
+	}
+
+	throw lastError
 }

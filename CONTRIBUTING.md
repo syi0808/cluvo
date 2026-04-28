@@ -135,6 +135,21 @@ Run the full test suite before submitting a pull request:
 bun test --recursive
 ```
 
+Run the full local verification gate:
+
+```bash
+bun run verify
+```
+
+Targeted suites:
+
+```bash
+bun run test:unit       # package-level unit/integration tests
+bun run test:e2e        # subprocess SDK/CLI tests
+bun run test:compat     # build output, ESM/CJS exports, CLI bin smoke
+bun run test:stress     # randomized repeated run for flaky/order-dependent tests
+```
+
 Run a specific test file:
 
 ```bash

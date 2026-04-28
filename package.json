@@ -6,6 +6,12 @@
 	],
 	"scripts": {
 		"test": "bun test --recursive",
+		"test:unit": "bun test packages",
+		"test:e2e": "bun test test/e2e --timeout 30000",
+		"test:compat": "bun run build && bun test ./test/compat/dist-exports.compat.ts --timeout 30000",
+		"test:coverage": "bun test --recursive --coverage",
+		"test:stress": "bun test --recursive --randomize --rerun-each 3 --timeout 30000",
+		"verify": "bun run check && bun run typecheck && bun run build && bun run test && bun run test:compat",
 		"build": "bun run --filter '*' build",
 		"typecheck": "tsc --build --force",
 		"check": "biome check",

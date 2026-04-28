@@ -4,7 +4,7 @@ import { publish as corePublish, formatBody, formatTitle } from '@cluvo/core'
 export async function submitReport(
 	store: Store,
 	report: ErrorReport,
-	config: { repo: string; mode?: ReporterConfig['mode'] },
+	config: { repo: string; mode?: ReporterConfig['mode']; fallbackDir?: string },
 ): Promise<string | null> {
 	const draft = {
 		title: formatTitle(report),
@@ -13,6 +13,7 @@ export async function submitReport(
 	const result = await corePublish(draft, {
 		repo: config.repo,
 		mode: config.mode,
+		fallbackDir: config.fallbackDir,
 	})
 
 	await store.updateStatus(report.app.name, report.id, 'submitted', result.issueUrl)
@@ -21,7 +22,7 @@ export async function submitReport(
 
 export async function submitAll(
 	store: Store,
-	config: { repo: string; mode?: ReporterConfig['mode'] },
+	config: { repo: string; mode?: ReporterConfig['mode']; fallbackDir?: string },
 	confirm?: (report: ErrorReport) => Promise<boolean>,
 ): Promise<{ submitted: number; skipped: number; failed: number }> {
 	const pending = await store.list(undefined, { statusFilter: 'pending' })

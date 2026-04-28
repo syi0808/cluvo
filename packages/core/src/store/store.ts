@@ -2,6 +2,35 @@ import { mkdir, readdir, readFile, unlink, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import type { ErrorReport } from '../types.js'
 
+const REPORTS_DIR = 'reports'
+
+function encodeAppName(appName: string): string {
+	return encodeURIComponent(appName)
+}
+
+function encodeReportId(id: string): string {
+	return encodeURIComponent(id)
+}
+
+function decodeAppName(appName: string): string {
+	try {
+		return decodeURIComponent(appName)
+	} catch {
+		return appName
+	}
+}
+
+function legacyScopedPathParts(appName: string): string[] | null {
+	const parts = appName.split('/')
+	if (parts.length !== 2 || !parts[0].startsWith('@')) return null
+	if (
+		parts.some((part) => part.length === 0 || part === '.' || part === '..' || part.includes('\\'))
+	) {
+		return null
+	}
+	return parts
+}
+
 export class Store {
 	private baseDir: string
 	private maxReports: number
@@ -11,12 +40,32 @@ export class Store {
 		this.maxReports = maxReports
 	}
 
+	private reportsDir(): string {
+		return join(this.baseDir, REPORTS_DIR)
+	}
+
 	private appDir(appName: string): string {
-		return join(this.baseDir, 'reports', appName)
+		return join(this.reportsDir(), encodeAppName(appName))
+	}
+
+	private legacyAppDir(appName: string): string | null {
+		const parts = legacyScopedPathParts(appName)
+		return parts ? join(this.reportsDir(), ...parts) : null
+	}
+
+	private appDirs(appName: string): string[] {
+		const dirs = [this.appDir(appName)]
+		const legacy = this.legacyAppDir(appName)
+		if (legacy && legacy !== dirs[0]) dirs.push(legacy)
+		return dirs
 	}
 
 	private filePath(appName: string, id: string): string {
-		return join(this.appDir(appName), `${id}.json`)
+		return join(this.appDir(appName), `${encodeReportId(id)}.json`)
+	}
+
+	private candidateFilePaths(appName: string, id: string): string[] {
+		return this.appDirs(appName).map((dir) => join(dir, `${encodeReportId(id)}.json`))
 	}
 
 	async save(report: ErrorReport): Promise<void> {
@@ -27,12 +76,23 @@ export class Store {
 	}
 
 	async load(appName: string, id: string): Promise<ErrorReport | null> {
-		try {
-			const content = await readFile(this.filePath(appName, id), 'utf-8')
-			return JSON.parse(content)
-		} catch {
-			return null
+		const entry = await this.loadEntry(appName, id)
+		return entry?.report ?? null
+	}
+
+	private async loadEntry(
+		appName: string,
+		id: string,
+	): Promise<{ report: ErrorReport; path: string } | null> {
+		for (const path of this.candidateFilePaths(appName, id)) {
+			try {
+				const content = await readFile(path, 'utf-8')
+				return { report: JSON.parse(content), path }
+			} catch {
+				// Try the next storage layout.
+			}
 		}
+		return null
 	}
 
 	async findById(id: string): Promise<ErrorReport | null> {
@@ -49,20 +109,28 @@ export class Store {
 		const reports: ErrorReport[] = []
 
 		for (const app of apps) {
-			try {
-				const dir = this.appDir(app)
-				const files = await readdir(dir)
-				for (const file of files) {
-					if (!file.endsWith('.json')) continue
-					const content = await readFile(join(dir, file), 'utf-8')
-					const report: ErrorReport = JSON.parse(content)
-					if (!options?.statusFilter || report.status === options.statusFilter) {
-						reports.push(report)
+			const reportsById = new Map<string, ErrorReport>()
+			for (const dir of this.appDirs(app)) {
+				try {
+					const files = await readdir(dir)
+					for (const file of files) {
+						if (!file.endsWith('.json')) continue
+						let report: ErrorReport
+						try {
+							const content = await readFile(join(dir, file), 'utf-8')
+							report = JSON.parse(content)
+						} catch {
+							continue
+						}
+						if (!options?.statusFilter || report.status === options.statusFilter) {
+							if (!reportsById.has(report.id)) reportsById.set(report.id, report)
+						}
 					}
+				} catch {
+					// directory doesn't exist, skip
 				}
-			} catch {
-				// directory doesn't exist, skip
 			}
+			reports.push(...reportsById.values())
 		}
 
 		return reports.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
@@ -74,19 +142,21 @@ export class Store {
 		status: 'pending' | 'submitted' | 'dismissed',
 		issueUrl?: string,
 	): Promise<void> {
-		const report = await this.load(appName, id)
-		if (!report) return
-		report.status = status
-		if (issueUrl) report.issueUrl = issueUrl
-		if (status === 'submitted') report.submittedAt = new Date().toISOString()
-		await writeFile(this.filePath(appName, id), JSON.stringify(report, null, 2))
+		const entry = await this.loadEntry(appName, id)
+		if (!entry) return
+		entry.report.status = status
+		if (issueUrl) entry.report.issueUrl = issueUrl
+		if (status === 'submitted') entry.report.submittedAt = new Date().toISOString()
+		await writeFile(entry.path, JSON.stringify(entry.report, null, 2))
 	}
 
 	async delete(appName: string, id: string): Promise<void> {
-		try {
-			await unlink(this.filePath(appName, id))
-		} catch {
-			// already deleted
+		for (const path of this.candidateFilePaths(appName, id)) {
+			try {
+				await unlink(path)
+			} catch {
+				// already deleted
+			}
 		}
 	}
 
@@ -132,8 +202,25 @@ export class Store {
 
 	private async listApps(): Promise<string[]> {
 		try {
-			const reportsDir = join(this.baseDir, 'reports')
-			return await readdir(reportsDir)
+			const apps = new Set<string>()
+			const entries = await readdir(this.reportsDir(), { withFileTypes: true })
+			for (const entry of entries) {
+				if (!entry.isDirectory()) continue
+				apps.add(decodeAppName(entry.name))
+
+				if (!entry.name.startsWith('@')) continue
+				try {
+					const children = await readdir(join(this.reportsDir(), entry.name), {
+						withFileTypes: true,
+					})
+					for (const child of children) {
+						if (child.isDirectory()) apps.add(`${entry.name}/${child.name}`)
+					}
+				} catch {
+					// legacy scoped directory disappeared, skip
+				}
+			}
+			return [...apps]
 		} catch {
 			return []
 		}

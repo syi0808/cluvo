@@ -37,11 +37,11 @@ export async function handlePresenterAction(
 			await addReaction(repo, action.issue.number)
 			break
 		case 'open':
-			await corePublish(draft, { repo, mode: 'browser' })
+			await corePublish(draft, { repo, mode: 'browser', fallbackDir: `${storeDir}/drafts` })
 			await store.updateStatus(report.app.name, report.id, 'submitted')
 			break
 		case 'gh':
-			await corePublish(draft, { repo, mode: 'gh' })
+			await corePublish(draft, { repo, mode: 'gh', fallbackDir: `${storeDir}/drafts` })
 			await store.updateStatus(report.app.name, report.id, 'submitted')
 			break
 		case 'save': {

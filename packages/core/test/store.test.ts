@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
-import { mkdtemp, rm } from 'node:fs/promises'
+import { existsSync } from 'node:fs'
+import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { Store } from '../src/store/store.js'
@@ -122,6 +123,63 @@ describe('Store', () => {
 		// New store with no saves — listApps called implicitly via list()
 		const list = await store.list()
 		expect(list).toHaveLength(0)
+	})
+
+	test('list skips malformed report files without dropping valid reports', async () => {
+		await store.save(makeReport('r-valid'))
+		await writeFile(join(storeDir, 'reports', 'test-app', '0-broken.json'), '{not json', 'utf-8')
+
+		const list = await store.list('test-app')
+
+		expect(list).toHaveLength(1)
+		expect(list[0].id).toBe('r-valid')
+	})
+
+	test('supports scoped package names as one logical app', async () => {
+		const report = makeReport('r-scoped')
+		report.app.name = '@scope/pkg'
+
+		await store.save(report)
+
+		const loaded = await store.load('@scope/pkg', 'r-scoped')
+		const all = await store.list()
+
+		expect(loaded?.app.name).toBe('@scope/pkg')
+		expect(all.map((r) => r.id)).toContain('r-scoped')
+		expect(await store.findById('r-scoped')).not.toBeNull()
+	})
+
+	test('reads legacy scoped app directories created before app name encoding', async () => {
+		const report = makeReport('r-legacy')
+		report.app.name = '@legacy/pkg'
+		const legacyDir = join(storeDir, 'reports', '@legacy', 'pkg')
+		await mkdir(legacyDir, { recursive: true })
+		await writeFile(join(legacyDir, 'r-legacy.json'), JSON.stringify(report), 'utf-8')
+
+		const list = await store.list()
+		const loaded = await store.load('@legacy/pkg', 'r-legacy')
+
+		expect(list.map((r) => r.id)).toContain('r-legacy')
+		expect(loaded?.app.name).toBe('@legacy/pkg')
+	})
+
+	test('encodes unsafe app names instead of treating them as paths', async () => {
+		const report = makeReport('r-traversal')
+		report.app.name = '../escape'
+
+		await store.save(report)
+
+		expect(existsSync(join(storeDir, 'escape', 'r-traversal.json'))).toBe(false)
+		expect(await store.load('../escape', 'r-traversal')).not.toBeNull()
+	})
+
+	test('encodes unsafe report ids instead of treating them as paths', async () => {
+		const report = makeReport('../escape')
+
+		await store.save(report)
+
+		expect(existsSync(join(storeDir, 'reports', 'escape.json'))).toBe(false)
+		expect(await store.load('test-app', '../escape')).not.toBeNull()
 	})
 
 	test('clean with olderThanMs only removes old reports', async () => {

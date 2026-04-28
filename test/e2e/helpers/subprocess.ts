@@ -1,7 +1,7 @@
-import { mkdir, mkdtemp, readdir, readFile, writeFile } from 'node:fs/promises'
+import { mkdtemp, readdir, readFile, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import type { ErrorReport } from '@cluvo/core'
+import { type ErrorReport, Store } from '../../../packages/core/src/index.js'
 import type { TestEnvironment } from './environments.js'
 import { environments } from './environments.js'
 
@@ -134,27 +134,15 @@ export async function seedReports(
 	appName: string,
 	reports: ErrorReport[],
 ): Promise<void> {
-	const reportDir = join(storeDir, 'reports', appName)
-	await mkdir(reportDir, { recursive: true })
+	const store = new Store(storeDir)
 	for (const report of reports) {
-		await writeFile(join(reportDir, `${report.id}.json`), JSON.stringify(report, null, 2), 'utf-8')
+		await store.save({ ...report, app: { ...report.app, name: appName } })
 	}
 }
 
 export async function readReports(storeDir: string, appName: string): Promise<ErrorReport[]> {
-	const reportDir = join(storeDir, 'reports', appName)
-	try {
-		const files = await readdir(reportDir)
-		const reports: ErrorReport[] = []
-		for (const file of files) {
-			if (!file.endsWith('.json')) continue
-			const content = await readFile(join(reportDir, file), 'utf-8')
-			reports.push(JSON.parse(content))
-		}
-		return reports
-	} catch {
-		return []
-	}
+	const store = new Store(storeDir)
+	return store.list(appName)
 }
 
 export async function readDrafts(storeDir: string): Promise<string[]> {

@@ -230,7 +230,11 @@ export class Reporter {
 		}
 
 		this.publish = async (draft: DraftPayload): Promise<PublishResult> => {
-			return corePublish(draft, { repo: config.repo, mode: config.mode })
+			return corePublish(draft, {
+				repo: config.repo,
+				mode: config.mode,
+				fallbackDir: `${config.storeDir}/drafts`,
+			})
 		}
 
 		this.reportError = async (error: unknown, context?: ErrorContext): Promise<ErrorReport> => {
